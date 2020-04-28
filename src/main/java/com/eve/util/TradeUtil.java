@@ -178,12 +178,14 @@ public class TradeUtil {
             OrderParseResult parseResult = result.get(id);
             parseResult.computerProfit();
             if(!parseResult.isMonopoly() && (parseResult.getStatisticData().getProfit() < hopeProfit || parseResult.getStatisticData().getProfitMargin() < hopeMargin)) {
-                result.remove(id);
+//                result.remove(id);
+                iter.remove();
                 continue;
             }
             parseResult.predictPurchaseCount();
             if (parseResult.getRecommendedCount() <= 0) {
-                result.remove(id);
+//                result.remove(id);
+                iter.remove();
             }
         }
     }
