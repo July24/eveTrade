@@ -1,27 +1,33 @@
 package com.eve.entity;
 
+import cn.hutool.core.util.NumberUtil;
 import com.eve.entity.database.Items;
+import com.eve.util.PrjConst;
 import lombok.Data;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
 
 @Data
 public class OrderParseResult {
     //可能为0
-    double minPrice;
+    double minPrice = 0.0;
     //可能为0
-    double maxPrice;
+    double maxPrice = 0.0;
     //可能为0
-    double average;
+    double average = 0.0;
     //可能为0
-    int volRemain;
+    int volRemain = 0;
     int typeID;
     //可能为0
-    double dailySalesVolume;
+    double dailySalesVolume = 0.0;
     //可能为0
-    int inventory;
+    int inventory = 0;
     boolean monopoly = false;
     Items item;
     EveMarketData eveMarketData;
-    StatisticData statisticData;
+    StatisticData statisticData = new StatisticData();
+    int recommendedCount = 0;
 
     public void addInventory(int count) {
         inventory += count;
@@ -29,5 +35,39 @@ public class OrderParseResult {
 
     public void minusVolRemain(int count) {
         volRemain -= count;
+    }
+
+    public void computerProfit() {
+        if(volRemain == 0) {
+            monopoly = true;
+            return;
+        }
+        double jitaSell = Double.parseDouble(eveMarketData.getSell().getMin());
+        double profit =
+                (minPrice - jitaSell - PrjConst.EXPRESS_FAX_CUBIC_METRES * item.getVolumn()) * (1 - PrjConst.AVG_BROKER_FAX) * (1 - PrjConst.SELL_FAX);
+        BigDecimal round = NumberUtil.round(profit, 2);
+        statisticData.setProfit(round.intValue());
+        double margin = NumberUtil.div(round.doubleValue(), jitaSell, 2);
+        statisticData.setProfitMargin(margin);
+    }
+    //    理想销售量 = 7 * daily
+//            理想进货量 =
+//            7*daily>x
+//		7*daily-x
+//	7*daily<=x
+//		max(3*daily(175/x), daily)
+//    实际进货量 = 理想进货量 - rf库存
+    public void predictPurchaseCount() {
+        if(dailySalesVolume < 1) {
+            recommendedCount = 0;
+        }
+        int hopeCount = NumberUtil.round(7 * dailySalesVolume, 0).intValue();
+        if(hopeCount > volRemain) {
+            recommendedCount = hopeCount - volRemain - inventory;
+        } else {
+            double rate = NumberUtil.div(hopeCount, volRemain);
+            BigDecimal predict = NumberUtil.mul(3, dailySalesVolume, rate);
+            recommendedCount = NumberUtil.max(predict, NumberUtil.round(dailySalesVolume,0)).subtract(new BigDecimal(inventory)).intValue();
+        }
     }
 }

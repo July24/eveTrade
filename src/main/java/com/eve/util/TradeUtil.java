@@ -117,8 +117,8 @@ public class TradeUtil {
         ItemsMapper itemsMapper = getItemsMapper();
         parseOasaOrder(result, folderPath, itemsMapper);
         setJitaItemInfo(result);
-        importInventory(result, orderListPath, rfWareHousePath, jitaWarehousePath);
-        getRecommendedPurchaseQuantity(result);
+        importInventory(result, orderListPath, rfWareHousePath, jitaWarehousePath, itemsMapper);
+        getRecommendedPurchaseQuantity(result, hopeProfit, profitMargin);
         Iterator<Integer> iterator = result.keySet().iterator();
         while (iterator.hasNext()) {
             Integer next = iterator.next();
@@ -126,54 +126,122 @@ public class TradeUtil {
         }
     }
 
-    private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result) {
+    private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result, int hopeProfit, double hopeMargin) throws IOException {
+        computeFilterProfit(result, hopeProfit, hopeMargin);
+//        outRecommendedDetailCSV();
+        outRecommendedSimple(result);
     }
 
-    private void importInventory(Map<Integer, OrderParseResult> result, String orderListPath, String rfWareHousePath, String jitaWarehousePath) throws IOException {
-        importOrderList(result, orderListPath);
-        importWarehouse(result, rfWareHousePath);
-        importWarehouse(result, jitaWarehousePath);
+    private void outRecommendedSimple(Map<Integer, OrderParseResult> result) throws IOException {
+        File file = new File("result/trade/simple");
+        List<OrderParseResult> monopoly = new ArrayList<>();
+        FileWriter writer = new FileWriter(file);
+        Iterator<Integer> iter = result.keySet().iterator();
+        while (iter.hasNext()) {
+            Integer id = iter.next();
+            OrderParseResult orderParseResult = result.get(id);
+            if(orderParseResult.isMonopoly()) {
+                monopoly.add(orderParseResult);
+                continue;
+            }
+            String record = getPurchaseRecord(orderParseResult);
+            writer.write(record);
+            writer.write("\r\n");
+        }
+        for (OrderParseResult mono : monopoly) {
+            writer.write("-------------------------");
+            writer.write("\r\n");
+            writer.write("---------monopoly--------");
+            writer.write("\r\n");
+            writer.write("-------------------------");
+            writer.write("\r\n");
+            writer.write(getPurchaseRecord(mono));
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
     }
 
-    private void importWarehouse(Map<Integer, OrderParseResult> result, String rfWareHousePath) {
-        //TODO 复制一下看看格式
-//        BufferedReader reader = null;
-//        try {
-////            System.out.println("以行为单位读取文件内容，一次读一整行：");
-//            reader = new BufferedReader(new FileReader(file));
-//            String tempString = null;
-//            int line = -1;
-//            // 一次读入一行，直到读入null为文件结束
-//            int sumCnt = 0;
-//            double sumSell = 0.0;
-//            while ((tempString = reader.readLine()) != null) {
-//                // 显示行号
-//                if(++line == 0) {
-//                    continue;
-//                }
-////                System.out.println("line " + line + ": " + tempString);
-////                line++;
-//
-//                String[] split = tempString.split("\t");
-//                int dayCnt = Integer.parseInt(split[2]);
-//                double dayAvg = Double.parseDouble(split[5].replace("ISK", "").replace(",", ""));
-//                sumCnt += dayCnt;
-//            }
-//            BigDecimal dailyCnt = NumberUtil.round(sumCnt / line, 0,
-//                    RoundingMode.DOWN);
-//            parseResult.setDailySalesVolume(dailyCnt.intValue());
-//            reader.close();
-//
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//        } finally {
-//            if (reader != null) {
-//                try {
-//                    reader.close();
-//                } catch (IOException e1) {
-//                }
-//            }
-//        }
+    private String getPurchaseRecord(OrderParseResult orderParseResult) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(orderParseResult.getItem().getEnName());
+        sb.append(" x");
+        sb.append(orderParseResult.getRecommendedCount());
+        return sb.toString();
+    }
+
+    private void computeFilterProfit(Map<Integer, OrderParseResult> result, int hopeProfit,
+                                              double hopeMargin) {
+        Iterator<Integer> iter = result.keySet().iterator();
+        while(iter.hasNext()) {
+            Integer id = iter.next();
+            OrderParseResult parseResult = result.get(id);
+            parseResult.computerProfit();
+            if(!parseResult.isMonopoly() && (parseResult.getStatisticData().getProfit() < hopeProfit || parseResult.getStatisticData().getProfitMargin() < hopeMargin)) {
+                result.remove(id);
+                continue;
+            }
+            parseResult.predictPurchaseCount();
+            if (parseResult.getRecommendedCount() <= 0) {
+                result.remove(id);
+            }
+        }
+    }
+
+    private void importInventory(Map<Integer, OrderParseResult> result, String orderListPath, String rfWareHousePath,
+                                 String jitaWarehousePath, ItemsMapper itemsMapper) throws IOException {
+        if(orderListPath != null) {
+            importOrderList(result, orderListPath);
+        }
+        if(rfWareHousePath != null) {
+            importWarehouse(result, rfWareHousePath, itemsMapper);
+        }
+        if(jitaWarehousePath != null) {
+            importWarehouse(result, jitaWarehousePath, itemsMapper);
+        }
+    }
+
+    private Items getItemByEnName(ItemsMapper itemsMapper, String en_name) {
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andEnNameEqualTo(en_name);
+        List<Items> items = itemsMapper.selectByExample(example);
+        if(items.size() == 0) {
+            return null;
+        }
+        return items.get(0);
+    }
+
+
+    private void importWarehouse(Map<Integer, OrderParseResult> result, String rfWareHousePath, ItemsMapper itemsMapper) {
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(new File(rfWareHousePath)));
+            String tempString = null;
+            while ((tempString = reader.readLine()) != null) {
+                String[] split = tempString.split("\t");
+                String en_name = split[0];
+                Items item = getItemByEnName(itemsMapper, en_name.trim());
+                if(item == null) {
+                    continue;
+                }
+                OrderParseResult orderParseResult = result.get(item.getId());
+                if(orderParseResult == null) {
+                    continue;
+                }
+                int remain = Integer.parseInt(split[1].replace(",", ""));
+                orderParseResult.addInventory(remain);
+            }
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e1) {
+                }
+            }
+        }
     }
 
     private void importOrderList(Map<Integer, OrderParseResult> result, String orderListPath) throws IOException {
@@ -183,7 +251,7 @@ public class TradeUtil {
             if("True".equalsIgnoreCase(record.get("bid"))) {
                 continue;
             }
-            OrderParseResult parse = result.get(record.get("typeID"));
+            OrderParseResult parse = result.get(Integer.parseInt(record.get("typeID")));
             if(parse == null) {
                 continue;
             }
@@ -242,6 +310,9 @@ public class TradeUtil {
     }
     public static void main(String[] args) throws Exception {
         TradeUtil tradeUtil = new TradeUtil();
+        tradeUtil.getOasaMarketRecommendedPurchaseList("D:\\\\yhy\\\\doc\\\\eve4.24\\\\test", "D:\\yhy\\doc\\record" +
+                        "\\My Orders-2020.04.26 2233.txt", "D:\\yhy\\doc\\record\\inventory11.txt", null, 1,
+                0.01);
 //        tradeUtil.getOasaMarketRecommendedPurchaseList("D:\\yhy\\doc\\eve4.24\\test");
     }
 
@@ -250,11 +321,9 @@ public class TradeUtil {
         File[] files = folder.listFiles();
         for(File file : files) {
             String name = file.getName();
-            String cn_name = name.split("-")[1];
+            String en_name = name.split("-")[1];
             boolean order = name.endsWith(".txt");
-            ItemsExample example = new ItemsExample();
-            example.createCriteria().andCnNameEqualTo(cn_name);
-            Items item = itemsMapper.selectByExample(example).get(0);
+            Items item = getItemByEnName(itemsMapper, en_name);
             if(item == null) {
                 continue;
             }
@@ -279,26 +348,32 @@ public class TradeUtil {
 //            System.out.println("以行为单位读取文件内容，一次读一整行：");
             reader = new BufferedReader(new FileReader(file));
             String tempString = null;
-            int line = -1;
+            int line = 0;
             // 一次读入一行，直到读入null为文件结束
             int sumCnt = 0;
             double sumSell = 0.0;
             while ((tempString = reader.readLine()) != null) {
                 // 显示行号
-                if(++line == 0) {
+                if(++line == 1) {
                     continue;
+                }
+                if(line > 8) {
+                    break;
                 }
 //                System.out.println("line " + line + ": " + tempString);
 //                line++;
 
                 String[] split = tempString.split("\t");
                 int dayCnt = Integer.parseInt(split[2]);
-                double dayAvg = Double.parseDouble(split[5].replace("ISK", "").replace(",", ""));
+//                double dayAvg = Double.parseDouble(split[5].replace("ISK", "").replace(",", ""));
                 sumCnt += dayCnt;
             }
-            BigDecimal dailyCnt = NumberUtil.round(sumCnt / line, 0,
+            if(line == 1) {
+                return;
+            }
+            BigDecimal dailyCnt = NumberUtil.round(NumberUtil.div(sumCnt, (line - 2)), 1,
                     RoundingMode.DOWN);
-            parseResult.setDailySalesVolume(dailyCnt.intValue());
+            parseResult.setDailySalesVolume(dailyCnt.doubleValue());
             reader.close();
 
         } catch (IOException e) {
@@ -320,6 +395,10 @@ public class TradeUtil {
         double sum = 0;
         int volRemain = 0;
         Iterable<CSVRecord> records = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(in);
+        Iterator<CSVRecord> iter = records.iterator();
+        if(!iter.hasNext()) {
+            return;
+        }
         for (CSVRecord record : records) {
             if(!"0".equals(record.get("jumps")) || "True".equals(record.get("bid"))) {
                 continue;
