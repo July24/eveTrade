@@ -6,10 +6,7 @@ import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.eve.dao.ItemsMapper;
-import com.eve.entity.EveMarketData;
-import com.eve.entity.EveMarketSellOrder;
-import com.eve.entity.Fitting;
-import com.eve.entity.OrderParseResult;
+import com.eve.entity.*;
 import com.eve.entity.database.Items;
 import com.eve.entity.database.ItemsExample;
 import org.apache.commons.csv.CSVFormat;
@@ -71,7 +68,7 @@ public class TradeUtil {
         }
     }
 
-    public Map<Integer, EveMarketData> queryJitaOrderInfo(List<Integer> typeIDs) {
+    private Map<Integer, EveMarketData> queryJitaOrderInfo(List<Integer> typeIDs) {
         Map<Integer, EveMarketData> ret = new HashMap<>();
         HashMap<String, Object> paramMap = new HashMap<>();
         paramMap.put("typeid", listToString(typeIDs));
@@ -110,20 +107,22 @@ public class TradeUtil {
         return sqlSession.getMapper(ItemsMapper.class);
     }
 
-    public void getOasaMarketRecommendedPurchaseList(String folderPath, String orderListPath, String rfWareHousePath,
-                                                     String jitaWarehousePath, int hopeProfit, double profitMargin
+    public void getOasaMarketRecommendedPurchaseList(String orderListPath,
+                                                      int hopeProfit, double profitMargin
                                                      ) throws Exception {
         Map<Integer, OrderParseResult> result = new HashMap<>();
         ItemsMapper itemsMapper = getItemsMapper();
-        parseOasaOrder(result, folderPath, itemsMapper);
+        parseOasaOrder(result, itemsMapper);
         setJitaItemInfo(result);
-        importInventory(result, orderListPath, rfWareHousePath, jitaWarehousePath, itemsMapper);
+        importInventory(result, orderListPath, itemsMapper);
         getRecommendedPurchaseQuantity(result, hopeProfit, profitMargin);
-        Iterator<Integer> iterator = result.keySet().iterator();
-        while (iterator.hasNext()) {
-            Integer next = iterator.next();
-            System.out.println(result.get(next));
-        }
+        saveLocal(result);
+    }
+
+    private void saveLocal(Map<Integer, OrderParseResult> result) throws Exception {
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("result/trade/local/temp"));
+        oos.writeObject(result);
+        oos.close();
     }
 
     private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result, int hopeProfit, double hopeMargin) throws IOException {
@@ -149,11 +148,11 @@ public class TradeUtil {
             writer.write("\r\n");
         }
         for (OrderParseResult mono : monopoly) {
-            writer.write("-------------------------");
+            writer.write("-----------------------------------");
             writer.write("\r\n");
-            writer.write("---------monopoly--------");
+            writer.write("--------------monopoly-------------");
             writer.write("\r\n");
-            writer.write("-------------------------");
+            writer.write("-----------------------------------");
             writer.write("\r\n");
             writer.write(getPurchaseRecord(mono));
             writer.write("\r\n");
@@ -177,30 +176,31 @@ public class TradeUtil {
             Integer id = iter.next();
             OrderParseResult parseResult = result.get(id);
             parseResult.computerProfit();
-            if(!parseResult.isMonopoly() && (parseResult.getStatisticData().getProfit() < hopeProfit || parseResult.getStatisticData().getProfitMargin() < hopeMargin)) {
-//                result.remove(id);
-                iter.remove();
-                continue;
-            }
-            parseResult.predictPurchaseCount();
-            if (parseResult.getRecommendedCount() <= 0) {
-//                result.remove(id);
-                iter.remove();
+            if(parseResult.isMonopoly()) {
+                parseResult.predictMonoPurchaseCount();
+                if(parseResult.getRecommendedCount() < 1) {
+                    iter.remove();
+                }
+            } else {
+                if(parseResult.getStatisticData().getProfit() < hopeProfit && parseResult.getStatisticData().getProfitMargin() < hopeMargin) {
+                    iter.remove();
+                    continue;
+                }
+                parseResult.predictPurchaseCount();
+                if (parseResult.getRecommendedCount() <= 0) {
+                    iter.remove();
+                }
             }
         }
     }
 
-    private void importInventory(Map<Integer, OrderParseResult> result, String orderListPath, String rfWareHousePath,
-                                 String jitaWarehousePath, ItemsMapper itemsMapper) throws IOException {
+    private void importInventory(Map<Integer, OrderParseResult> result, String orderListPath,
+                                 ItemsMapper itemsMapper) throws IOException {
         if(orderListPath != null) {
             importOrderList(result, orderListPath);
         }
-        if(rfWareHousePath != null) {
-            importWarehouse(result, rfWareHousePath, itemsMapper);
-        }
-        if(jitaWarehousePath != null) {
-            importWarehouse(result, jitaWarehousePath, itemsMapper);
-        }
+        importWarehouse(result, PrjConst.PATH_JITA_INVENTORY, itemsMapper);
+        importWarehouse(result, PrjConst.PATH_RF_INVENTORY, itemsMapper);
     }
 
     private Items getItemByEnName(ItemsMapper itemsMapper, String en_name) {
@@ -292,38 +292,14 @@ public class TradeUtil {
         }
     }
 
-    private Map<Integer, Items> getItemInfoMap(List<Integer> idList, ItemsMapper itemsMapper) throws IOException {
-        Map<Integer, Items> map = new HashMap<>();
-        ItemsExample example = new ItemsExample();
-        example.createCriteria().andIdIn(idList);
-        List<Items> items = itemsMapper.selectByExample(example);
-        for (Items item : items) {
-            map.put(item.getId(), item);
-        }
-        return map;
-    }
-
-    private List<Integer> getItemIDList(List<OrderParseResult> orderParseResults) {
-        List<Integer> result = new ArrayList<>();
-        for(OrderParseResult order : orderParseResults) {
-            result.add(order.getTypeID());
-        }
-        return result;
-    }
-    public static void main(String[] args) throws Exception {
-        TradeUtil tradeUtil = new TradeUtil();
-        tradeUtil.getOasaMarketRecommendedPurchaseList("D:\\\\yhy\\\\doc\\\\eve4.24\\\\test", "D:\\yhy\\doc\\record" +
-                        "\\My Orders-2020.04.26 2233.txt", "D:\\yhy\\doc\\record\\inventory11.txt", null, 1,
-                0.01);
-//        tradeUtil.getOasaMarketRecommendedPurchaseList("D:\\yhy\\doc\\eve4.24\\test");
-    }
-
-    public void parseOasaOrder(Map<Integer, OrderParseResult> result, String folderPath, ItemsMapper itemsMapper) throws Exception {
-        File folder = new File(folderPath);
+    private void parseOasaOrder(Map<Integer, OrderParseResult> result, ItemsMapper itemsMapper) throws Exception {
+        File folder = new File(PrjConst.PATH_MARKET_DATA_FILE_FOLDER);
         File[] files = folder.listFiles();
         for(File file : files) {
             String name = file.getName();
-            String en_name = name.split("-")[1];
+            int bgn = name.indexOf("-");
+            int end = name.lastIndexOf("-");
+            String en_name = name.substring(bgn+1, end);
             boolean order = name.endsWith(".txt");
             Items item = getItemByEnName(itemsMapper, en_name);
             if(item == null) {
@@ -423,5 +399,130 @@ public class TradeUtil {
         BigDecimal round = volRemain == 0 ? new BigDecimal(0) : NumberUtil.round(sum / volRemain, 2,
                 RoundingMode.DOWN);
         parseResult.setAverage(round.doubleValue());
+    }
+
+    public void getInventoryRelist(String orderFilePath) throws Exception {
+        ItemsMapper itemsMapper = getItemsMapper();
+        File orderFile = new File(orderFilePath);
+        File inventoryFile = new File(PrjConst.PATH_RF_INVENTORY);
+
+        List<Integer> orderIDList = new ArrayList<>();
+        Reader in = new FileReader(orderFile);
+        Iterable<CSVRecord> records = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(in);
+        for (CSVRecord record : records) {
+            if("True".equalsIgnoreCase(record.get("bid"))) {
+                continue;
+            }
+            orderIDList.add(Integer.parseInt(record.get("typeID")));
+        }
+
+        List<String> enNameList = new ArrayList<>();
+        BufferedReader reader = null;
+        reader = new BufferedReader(new FileReader(inventoryFile));
+        String tempString = null;
+        while ((tempString = reader.readLine()) != null) {
+            String[] split = tempString.split("\t");
+            enNameList.add(split[0].trim());
+        }
+        reader.close();
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andEnNameIn(enNameList);
+        List<Items> items = itemsMapper.selectByExample(example);
+        items.removeIf(next -> orderIDList.contains(next.getId()));
+
+        outRelist(items);
+    }
+
+    private void outRelist(List<Items> items) throws IOException {
+        File file = new File("result/trade/InventoryRelist");
+        FileWriter writer = new FileWriter(file);
+        Iterator<Items> iter = items.iterator();
+        while (iter.hasNext()) {
+            Items id = iter.next();
+            writer.write(id.getEnName());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    public void revisionBuyOrder(int hopeProfit, double profitMargin) throws Exception {
+        Map<Integer, OrderParseResult> map = loadTemp();
+        ItemsMapper itemsMapper = getItemsMapper();
+        List<BuyOrderRecord> list = parseBuyOrder(itemsMapper);
+        if(revisionBuyCount(list, map, hopeProfit, profitMargin)) {
+            outRevisionBuyOrder(list);
+        }
+    }
+
+    private void outRevisionBuyOrder(List<BuyOrderRecord> list) throws IOException {
+        File file = new File("result/trade/revisionBuy/revisionBuyOrder");
+        FileWriter writer = new FileWriter(file);
+        for (BuyOrderRecord record : list) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(record.getEn_name());
+            sb.append(" x");
+            sb.append(record.getCount());
+            writer.write(sb.toString());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private boolean revisionBuyCount(List<BuyOrderRecord> list, Map<Integer, OrderParseResult> map, int hopeProfit,
+                               double profitMargin) {
+        boolean need = false;
+        for (BuyOrderRecord record : list) {
+            if(record.getPrice() == 0) {
+                record.setCount(reduceBuyCount(record.getCount()));
+                need = true;
+            } else {
+                OrderParseResult orderParseResult = map.get(record.getId());
+                double profit =
+                        (orderParseResult.getMinPrice() - record.getPrice() - PrjConst.EXPRESS_FAX_CUBIC_METRES * orderParseResult.getItem().getVolumn()) * (1 - PrjConst.AVG_BROKER_FAX) * (1 - PrjConst.SELL_FAX);
+                double margin = NumberUtil.div(profit, record.getPrice(), 2);
+                if(profit < hopeProfit && margin < hopeProfit) {
+                    record.setCount(reduceBuyCount(record.getCount()));
+                    need = true;
+                }
+            }
+        }
+        return need;
+    }
+
+    private int reduceBuyCount(int count) {
+        return NumberUtil.roundDown(NumberUtil.mul(count, 0.8), 0).intValue();
+    }
+
+    private List<BuyOrderRecord> parseBuyOrder(ItemsMapper itemsMapper) throws Exception {
+        List<BuyOrderRecord> ret = new ArrayList<>();
+        BufferedReader reader = null;
+        reader = new BufferedReader(new FileReader("result/trade/revisionBuy/buyOrderOut"));
+        String tempString = null;
+        while ((tempString = reader.readLine()) != null) {
+            String[] split = tempString.split("\t");
+//            enNameList.add(split[0].trim());
+            String en_name = split[0];
+            if("Total:".equalsIgnoreCase(en_name)) {
+                continue;
+            }
+            double price = "-".equals(split[2]) ? 0 : Double.parseDouble(split[2].replace(",", ""));
+            BuyOrderRecord record = new BuyOrderRecord();
+            Items item = getItemByEnName(itemsMapper, en_name.trim());
+            record.setId(item.getId());
+            record.setEn_name(en_name.trim());
+            record.setCount(Integer.parseInt(split[1]));
+            record.setPrice(price);
+            ret.add(record);
+        }
+        reader.close();
+        return ret;
+    }
+
+    private Map<Integer, OrderParseResult> loadTemp() throws Exception {
+        File file = new File("result/trade/local/temp");
+        ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file));
+        return (Map<Integer, OrderParseResult>)ois.readObject();
     }
 }

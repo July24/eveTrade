@@ -5,11 +5,12 @@ import com.eve.entity.database.Items;
 import com.eve.util.PrjConst;
 import lombok.Data;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
 @Data
-public class OrderParseResult {
+public class OrderParseResult implements Serializable {
     //可能为0
     double minPrice = 0.0;
     //可能为0
@@ -60,6 +61,7 @@ public class OrderParseResult {
     public void predictPurchaseCount() {
         if(dailySalesVolume < 1) {
             recommendedCount = 0;
+            return;
         }
         int hopeCount = NumberUtil.round(7 * dailySalesVolume, 0).intValue();
         if(hopeCount > volRemain) {
@@ -68,6 +70,14 @@ public class OrderParseResult {
             double rate = NumberUtil.div(hopeCount, volRemain);
             BigDecimal predict = NumberUtil.mul(3, dailySalesVolume, rate);
             recommendedCount = NumberUtil.max(predict, NumberUtil.round(dailySalesVolume,0)).subtract(new BigDecimal(inventory)).intValue();
+        }
+    }
+
+    public void predictMonoPurchaseCount() {
+        if(dailySalesVolume < 1) {
+            recommendedCount = 7-inventory;
+        } else {
+            recommendedCount = NumberUtil.round(7 * dailySalesVolume - inventory, 0).intValue();
         }
     }
 }

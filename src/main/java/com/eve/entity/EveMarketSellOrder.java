@@ -2,8 +2,10 @@ package com.eve.entity;
 
 import lombok.Data;
 
+import java.io.Serializable;
+
 @Data
-public class EveMarketSellOrder {
+public class EveMarketSellOrder implements Serializable {
     private EveMarketForQuery forQuery;
     private String volume;
     private String wavg;
