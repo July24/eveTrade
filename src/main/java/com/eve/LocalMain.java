@@ -78,6 +78,4 @@ public class LocalMain {
         String orderFilePath = "D:\\yhy\\doc\\record\\My Orders-2020.04.26 2233.txt";
         tradeUtil.getInventoryRelist(orderFilePath);
     }
-
-
 }
