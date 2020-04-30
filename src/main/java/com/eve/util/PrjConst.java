@@ -11,4 +11,8 @@ public class PrjConst {
     public static final String PATH_MARKET_DATA_FILE_FOLDER = "result/trade/marketData";
     public static final String PATH_JITA_INVENTORY = "result/trade/inventory/jitaInventory";
     public static final String PATH_RF_INVENTORY = "result/trade/inventory/rfInventory";
+    public static final String PATH_RECOMMEND_NOT_BUY = "result/trade/recommendNotBuyList";
+    public static final String PATH_RECOMMEND_BUY_SIMPLE = "result/trade/simple";
+
+    public static final String SEPARATOR_PREFIX = "----";
 }

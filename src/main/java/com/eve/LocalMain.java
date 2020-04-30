@@ -22,7 +22,7 @@ public class LocalMain {
     public static void main(String[] args) throws Exception {
         LocalMain localMain = new LocalMain();
 //        localMain.parseMarketGetPurchaseList();
-        localMain.getInventoryRelist();
+        localMain.getRecommendNotBuyList();
     }
 
     /**
@@ -73,9 +73,25 @@ public class LocalMain {
      *  orderFilePath 订单路径
      *  rf本地库存放入
      *      result/trade/inventory/rfInventory
+     *  输出
+     *      result/trade/inventoryRelist
      */
     private void getInventoryRelist() throws Exception {
         String orderFilePath = "D:\\yhy\\doc\\record\\My Orders-2020.04.26 2233.txt";
         tradeUtil.getInventoryRelist(orderFilePath);
+    }
+
+    /**
+     * 从推荐列表中得到吉他未购买的剩余物品列表
+     * 输入
+     *  orderFilePath 订单路径
+     *  jita库存放入
+     *      result/trade/inventory/jitaInventory
+     *  输出
+     *      result/trade/recommendNotBuyList
+     */
+    private void getRecommendNotBuyList() throws Exception {
+        String orderFilePath = "D:\\yhy\\doc\\record\\My Order.txt";
+        tradeUtil.getRecommendNotBuyList(orderFilePath);
     }
 }

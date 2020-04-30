@@ -525,4 +525,88 @@ public class TradeUtil {
         ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file));
         return (Map<Integer, OrderParseResult>)ois.readObject();
     }
+
+    private Map<String, Integer> getRecommendMap() throws Exception {
+        Map<String, Integer> map = new HashMap<>();
+        BufferedReader reader = null;
+        reader = new BufferedReader(new FileReader(PrjConst.PATH_RECOMMEND_BUY_SIMPLE));
+        String tempString = null;
+        while ((tempString = reader.readLine()) != null) {
+            if(tempString.startsWith(PrjConst.SEPARATOR_PREFIX)) {
+                continue;
+            }
+            int x = tempString.lastIndexOf("x");
+            map.put(tempString.substring(0, x-1), Integer.parseInt(tempString.substring(x+1)));
+        }
+        reader.close();
+        return map;
+    }
+
+    private Map<String, Integer> getJitaInventoryMap() throws Exception {
+        Map<String, Integer> map = new HashMap<>();
+        BufferedReader reader = null;
+        reader = new BufferedReader(new FileReader(PrjConst.PATH_JITA_INVENTORY));
+        String tempString = null;
+        while ((tempString = reader.readLine()) != null) {
+            String[] split = tempString.split("\t");
+            map.put(split[0], Integer.parseInt(split[1].replace(",", "")));
+        }
+        reader.close();
+        return map;
+    }
+
+    private Map<String, Integer> getOrderMap(String orderFilePath) throws Exception {
+        ItemsMapper itemsMapper = getItemsMapper();
+        Map<String, Integer> map = new HashMap<>();
+        Reader in = new FileReader(new File(orderFilePath));
+        Iterable<CSVRecord> records = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(in);
+        for (CSVRecord record : records) {
+            if("False".equalsIgnoreCase(record.get("bid"))) {
+                continue;
+            }
+            int typeID = Integer.parseInt(record.get("typeID"));
+            Items items = itemsMapper.selectByPrimaryKey(typeID);
+            String volRemaining = record.get("volRemaining");
+            String volEntered = record.get("volEntered");
+            map.put(items.getEnName(), NumberUtil.sub(volEntered, volRemaining).intValue());
+        }
+        return map;
+    }
+
+    public void getRecommendNotBuyList(String orderFilePath) throws Exception {
+        Map<String, Integer> recommendMap = getRecommendMap();
+        Map<String, Integer> jitaMap = getJitaInventoryMap();
+        Map<String, Integer> orderMap = getOrderMap(orderFilePath);
+        Iterator<String> iter = recommendMap.keySet().iterator();
+        while (iter.hasNext()) {
+            String enName = iter.next();
+            Integer count = recommendMap.get(enName);
+            Integer inventoryRemain = jitaMap.get(enName) == null ? 0 : jitaMap.get(enName);
+            Integer orderBuy = orderMap.get(enName) == null ? 0 : orderMap.get(enName);
+            int remainBuy = count - inventoryRemain - orderBuy;
+            if(remainBuy <= 0) {
+                iter.remove();
+            } else {
+                recommendMap.put(enName, remainBuy);
+            }
+        }
+        outNotBuyList(recommendMap);
+    }
+
+    private void outNotBuyList(Map<String, Integer> recommendMap) throws Exception {
+        File file = new File(PrjConst.PATH_RECOMMEND_NOT_BUY);
+        FileWriter writer = new FileWriter(file);
+        Iterator<String> iter = recommendMap.keySet().iterator();
+        while (iter.hasNext()) {
+            String enName = iter.next();
+            StringBuilder sb = new StringBuilder();
+            sb.append(enName);
+            sb.append(" x");
+            sb.append(recommendMap.get(enName));
+            writer.write(sb.toString());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
 }
