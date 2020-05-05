@@ -558,6 +558,9 @@ public class TradeUtil {
     private Map<String, Integer> getOrderMap(String orderFilePath) throws Exception {
         ItemsMapper itemsMapper = getItemsMapper();
         Map<String, Integer> map = new HashMap<>();
+        if(orderFilePath == null) {
+            return map;
+        }
         Reader in = new FileReader(new File(orderFilePath));
         Iterable<CSVRecord> records = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(in);
         for (CSVRecord record : records) {
@@ -566,9 +569,11 @@ public class TradeUtil {
             }
             int typeID = Integer.parseInt(record.get("typeID"));
             Items items = itemsMapper.selectByPrimaryKey(typeID);
-            String volRemaining = record.get("volRemaining");
+//            String volRemaining = record.get("volRemaining");
             String volEntered = record.get("volEntered");
-            map.put(items.getEnName(), NumberUtil.sub(volEntered, volRemaining).intValue());
+            Double dEntered = Double.parseDouble(volEntered);
+//            NumberUtil.sub(volEntered, volRemaining).intValue()
+            map.put(items.getEnName(), dEntered.intValue());
         }
         return map;
     }

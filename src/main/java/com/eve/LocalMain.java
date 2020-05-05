@@ -16,13 +16,13 @@ import java.util.Iterator;
 import java.util.Map;
 
 public class LocalMain {
-
+    //TODO 找到订单列表中不是最低价的订单
     private TradeUtil tradeUtil = new TradeUtil();
 
     public static void main(String[] args) throws Exception {
         LocalMain localMain = new LocalMain();
 //        localMain.parseMarketGetPurchaseList();
-        localMain.getRecommendNotBuyList();
+        localMain.getInventoryRelist();
     }
 
     /**
@@ -46,10 +46,12 @@ public class LocalMain {
      *  result/trade/local/temp 临时储存本次购买物品信息(用于在jita修正多重购买订单)
      */
     private void parseMarketGetPurchaseList() throws Exception {
-        String orderListPath = null;
-        int hopeProfit = 100000;
-        double profitMargin = 0.5;
-        tradeUtil.getOasaMarketRecommendedPurchaseList(orderListPath, hopeProfit, profitMargin);
+//        String orderListPath = "C:\\Users\\叶皓宇\\Documents\\EVE\\logs" +
+//                "\\Marketlogs\\My Orders-2020.05.02 0423.txt";
+        int hopeProfit = 300000;
+        double profitMargin = 0.4;
+        tradeUtil.getOasaMarketRecommendedPurchaseList(null, hopeProfit,
+                profitMargin);
     }
 
     /**
@@ -77,13 +79,14 @@ public class LocalMain {
      *      result/trade/inventoryRelist
      */
     private void getInventoryRelist() throws Exception {
-        String orderFilePath = "D:\\yhy\\doc\\record\\My Orders-2020.04.26 2233.txt";
+        String orderFilePath = "C:\\Users\\叶皓宇\\Documents\\EVE\\logs\\Marketlogs\\My Orders-2020.05.05 0741.txt";
         tradeUtil.getInventoryRelist(orderFilePath);
     }
 
     /**
      * 从推荐列表中得到吉他未购买的剩余物品列表
      * 输入
+     *  result/trade/simple 存在购买列表
      *  orderFilePath 订单路径
      *  jita库存放入
      *      result/trade/inventory/jitaInventory
@@ -91,7 +94,8 @@ public class LocalMain {
      *      result/trade/recommendNotBuyList
      */
     private void getRecommendNotBuyList() throws Exception {
-        String orderFilePath = "D:\\yhy\\doc\\record\\My Order.txt";
-        tradeUtil.getRecommendNotBuyList(orderFilePath);
+//        String orderFilePath = "C:\\Users\\叶皓宇\\Documents\\EVE\\logs" +
+//                "\\Marketlogs\\My Orders-2020.04.30 1205.txt";
+        tradeUtil.getRecommendNotBuyList(null);
     }
 }

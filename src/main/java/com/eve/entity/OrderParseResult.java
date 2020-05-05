@@ -65,12 +65,20 @@ public class OrderParseResult implements Serializable {
         }
         int hopeCount = NumberUtil.round(7 * dailySalesVolume, 0).intValue();
         if(hopeCount > volRemain) {
-            recommendedCount = hopeCount - volRemain - inventory;
+            recommendedCount = hopeCount - inventory;
         } else {
-            double rate = NumberUtil.div(hopeCount, volRemain);
-            BigDecimal predict = NumberUtil.mul(3, dailySalesVolume, rate);
-            recommendedCount = NumberUtil.max(predict, NumberUtil.round(dailySalesVolume,0)).subtract(new BigDecimal(inventory)).intValue();
+            BigDecimal mul = NumberUtil.div(new BigDecimal(hopeCount),
+                    new BigDecimal(2));
+            recommendedCount = NumberUtil.round(NumberUtil.sub(mul,
+                    new BigDecimal(inventory)), 0).intValue();
         }
+//        if(hopeCount > volRemain) {
+//            recommendedCount = hopeCount - volRemain - inventory;
+//        } else {
+//            double rate = NumberUtil.div(hopeCount, volRemain);
+//            BigDecimal predict = NumberUtil.mul(3, dailySalesVolume, rate);
+//            recommendedCount = NumberUtil.max(predict, NumberUtil.round(dailySalesVolume,0)).subtract(new BigDecimal(inventory)).intValue();
+//        }
     }
 
     public void predictMonoPurchaseCount() {
