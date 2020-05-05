@@ -12,7 +12,7 @@ import java.math.BigInteger;
 @Data
 public class OrderParseResult implements Serializable {
     //可能为0
-    double minPrice = 0.0;
+    double minPrice = Long.MAX_VALUE;
     //可能为0
     double maxPrice = 0.0;
     //可能为0
@@ -44,6 +44,9 @@ public class OrderParseResult implements Serializable {
             return;
         }
         double jitaSell = Double.parseDouble(eveMarketData.getSell().getMin());
+        if(jitaSell == 0) {
+            return;
+        }
         double profit =
                 (minPrice - jitaSell - PrjConst.EXPRESS_FAX_CUBIC_METRES * item.getVolumn()) * (1 - PrjConst.AVG_BROKER_FAX) * (1 - PrjConst.SELL_FAX);
         BigDecimal round = NumberUtil.round(profit, 2);
@@ -64,14 +67,26 @@ public class OrderParseResult implements Serializable {
             return;
         }
         int hopeCount = NumberUtil.round(7 * dailySalesVolume, 0).intValue();
-        if(hopeCount > volRemain) {
-            recommendedCount = hopeCount - inventory;
-        } else {
-            BigDecimal mul = NumberUtil.div(new BigDecimal(hopeCount),
-                    new BigDecimal(2));
-            recommendedCount = NumberUtil.round(NumberUtil.sub(mul,
-                    new BigDecimal(inventory)), 0).intValue();
-        }
+        BigDecimal mul = NumberUtil.div(new BigDecimal(hopeCount),
+                new BigDecimal(2));
+        recommendedCount = NumberUtil.round(NumberUtil.sub(mul,
+                new BigDecimal(inventory)), 0).intValue();
+
+//
+//        int hopeCount = NumberUtil.round(7 * dailySalesVolume, 0).intValue();
+//        if(hopeCount > volRemain) {
+//            recommendedCount = hopeCount - inventory;
+//        } else {
+//            BigDecimal mul = NumberUtil.div(new BigDecimal(hopeCount),
+//                    new BigDecimal(2));
+//            recommendedCount = NumberUtil.round(NumberUtil.sub(mul,
+//                    new BigDecimal(inventory)), 0).intValue();
+//        }
+
+
+
+
+
 //        if(hopeCount > volRemain) {
 //            recommendedCount = hopeCount - volRemain - inventory;
 //        } else {
@@ -83,7 +98,7 @@ public class OrderParseResult implements Serializable {
 
     public void predictMonoPurchaseCount() {
         if(dailySalesVolume < 1) {
-            recommendedCount = 7-inventory;
+            recommendedCount = 7 - inventory;
         } else {
             recommendedCount = NumberUtil.round(7 * dailySalesVolume - inventory, 0).intValue();
         }

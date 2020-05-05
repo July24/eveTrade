@@ -79,7 +79,7 @@ public class LocalMain {
      *      result/trade/inventoryRelist
      */
     private void getInventoryRelist() throws Exception {
-        String orderFilePath = "C:\\Users\\叶皓宇\\Documents\\EVE\\logs\\Marketlogs\\My Orders-2020.05.05 0741.txt";
+        String orderFilePath = "C:\\Users\\叶皓宇\\Documents\\EVE\\logs\\Marketlogs\\My Orders-2020.05.05 1420.txt";
         tradeUtil.getInventoryRelist(orderFilePath);
     }
 
