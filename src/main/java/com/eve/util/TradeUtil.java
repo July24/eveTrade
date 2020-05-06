@@ -72,7 +72,7 @@ public class TradeUtil {
         Map<Integer, EveMarketData> ret = new HashMap<>();
         HashMap<String, Object> paramMap = new HashMap<>();
         paramMap.put("typeid", listToString(typeIDs));
-        paramMap.put("usesystem", PrjConst.STATION_ID_JITA);
+        paramMap.put("usesystem", PrjConst.SOLAR_SYSTEM_ID_JITA);
         String result= HttpUtil.get("https://api.evemarketer.com/ec/marketstat/json", paramMap);
 ////        String result="[{\"buy\":{\"forQuery\":{\"bid\":true,\"types\":[200],\"regions\":[],\"systems\":[]," +
 ////                "\"hours\":24,\"minq\":1},\"volume\":10097500,\"wavg\":41.28,\"avg\":67.68,\"variance\":1680.61,\"stdDev\":41.00,\"median\":20.03,\"fivePercent\":115.76,\"max\":140.00,\"min\":8.50,\"highToLow\":true,\"generated\":1587714956485},\"sell\":{\"forQuery\":{\"bid\":false,\"types\":[200],\"regions\":[],\"systems\":[],\"hours\":24,\"minq\":1},\"volume\":18381452,\"wavg\":227.89,\"avg\":231.06,\"variance\":6335.78,\"stdDev\":79.60,\"median\":207.70,\"fivePercent\":161.32,\"max\":799.00,\"min\":80.00,\"highToLow\":false,\"generated\":1587714956485}},{\"buy\":{\"forQuery\":{\"bid\":true,\"types\":[201],\"regions\":[],\"systems\":[],\"hours\":24,\"minq\":1},\"volume\":9767443,\"wavg\":100.94,\"avg\":106.07,\"variance\":1381.71,\"stdDev\":37.17,\"median\":100.50,\"fivePercent\":152.06,\"max\":178.00,\"min\":20.03,\"highToLow\":true,\"generated\":1587716159714},\"sell\":{\"forQuery\":{\"bid\":false,\"types\":[201],\"regions\":[],\"systems\":[],\"hours\":24,\"minq\":1},\"volume\":28857599,\"wavg\":223.70,\"avg\":223.59,\"variance\":4491.63,\"stdDev\":67.02,\"median\":210.99,\"fivePercent\":154.98,\"max\":500.00,\"min\":99.68,\"highToLow\":false,\"generated\":1587716159714}}]";

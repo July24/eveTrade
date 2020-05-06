@@ -38,6 +38,23 @@ public class OrderParseResult implements Serializable {
         volRemain -= count;
     }
 
+    public void newComputerProfit(float volumn) {
+        if(volRemain == 0) {
+            monopoly = true;
+            return;
+        }
+        double jitaSell = Double.parseDouble(eveMarketData.getSell().getMin());
+        if(jitaSell == 0) {
+            return;
+        }
+        double profit =
+                (minPrice - jitaSell - PrjConst.EXPRESS_FAX_CUBIC_METRES * volumn) * (1 - PrjConst.AVG_BROKER_FAX) * (1 - PrjConst.SELL_FAX);
+        BigDecimal round = NumberUtil.round(profit, 2);
+        statisticData.setProfit(round.intValue());
+        double margin = NumberUtil.div(round.doubleValue(), jitaSell, 2);
+        statisticData.setProfitMargin(margin);
+    }
+
     public void computerProfit() {
         if(volRemain == 0) {
             monopoly = true;
@@ -45,6 +62,9 @@ public class OrderParseResult implements Serializable {
         }
         double jitaSell = Double.parseDouble(eveMarketData.getSell().getMin());
         if(jitaSell == 0) {
+            return;
+        }
+        if(item == null) {
             return;
         }
         double profit =
