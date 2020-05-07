@@ -8,6 +8,7 @@ public class EveOrder {
     private boolean isBuyOrder;
     private String issued;
     private String locationId;
+    private String regionId;
     private int minVolume;
     private String orderId;
     private double price;

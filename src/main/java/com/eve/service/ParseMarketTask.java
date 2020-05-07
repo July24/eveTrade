@@ -9,10 +9,7 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
-import com.eve.entity.EveMarketData;
-import com.eve.entity.EveOrder;
-import com.eve.entity.OrderHistory;
-import com.eve.entity.OrderParseResult;
+import com.eve.entity.*;
 import com.eve.entity.database.Items;
 import com.eve.util.PrjConst;
 
@@ -21,7 +18,7 @@ import java.util.*;
 import java.util.concurrent.RecursiveTask;
 
 public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult>> {
-    int THRESHOLD = 5;
+    int THRESHOLD = 30;
     Map<Integer, Integer> selfOrderMap;
     Map<Integer, Integer> jitaInventory;
     Map<Integer, Integer> rfInventory;
@@ -47,7 +44,9 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             Map<Integer, OrderParseResult> result = new HashMap<>();
             inputRfOrder(result, orderMap);
 //            System.out.println("导入RF订单完毕");
-            queryJitaOrderInfoTT(result);
+//            queryJitaOrderInfoTT(result);
+            // TODO esi中获取数据
+            queryJitaOrderInfoFromEsi(result);
 //            System.out.println("导入Jita订单完毕");
 //            System.out.println("getItemMap完毕");
             importInventory(result, selfOrderMap, jitaInventory, rfInventory);//todo 传入订单/库存
@@ -73,30 +72,34 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         }
     }
 
+    private static void testJitaOrderXml() {
+        List<Integer> typeIDs = new ArrayList<>();
+        typeIDs.add(17938);
+        typeIDs.add(1195);
+        typeIDs.add(1201);
+//        List<Integer> typeIDs = new ArrayList<>(orderResult.keySet());
+        for (int i = 0; i < typeIDs.size(); i = i + 200) {
+            int end = NumberUtil.min(i + 200, typeIDs.size());
+            List<Integer> sub = typeIDs.subList(i, end);
+
+            HashMap<String, Object> paramMap = new HashMap<>();
+            paramMap.put("typeid", listToString(sub));
+//            paramMap.put("usesystem", PrjConst.SOLAR_SYSTEM_ID_JITA);
+            String result= HttpUtil.get("https://api.evemarketer" +
+                    ".com/ec/marketstat", paramMap);
+            System.out.println(result);
+//            List<EveMarketData> array = JSON.parseArray(result, EveMarketData.class);
+//            for(EveMarketData data : array) {
+//                OrderParseResult orderParseResult = orderResult.get(Integer.parseInt(data.getBuy().getForQuery().getTypes().get(0)));
+//                orderParseResult.setEveMarketData(data);
+//            }
+        }
+    }
+
     public static void main(String[] args) {
-        HashMap<Integer, String> map = new HashMap<>();
-        map.put(1, "a");
-        map.put(2, "b");
-        map.put(3, "c");
-        map.put(4, "d");
-        map.put(5, "e");
+        ParseMarketTask task = new ParseMarketTask(null, null, null, null, null,0,0);
+        task.getRegionOrder(609);
 
-        Set<Integer> integers = map.keySet();
-        int size = integers.size();
-        List<Integer> sub = CollUtil.sub(integers, 0, size / 2);
-        List<Integer> sub2 = CollUtil.sub(integers, size / 2, size);
-
-
-        System.out.println(sub);
-        System.out.println(sub2);
-
-//        ArrayUtil.
-//        Integer[] test = (Integer[]) sub.toArray();
-//        System.out.println(test[1]);
-        Integer[] aa = new Integer[size - size / 2];
-        sub2.toArray(aa);
-        Map<Integer, String> left = MapUtil.getAny(map, aa);
-        System.out.println(left);
     }
 
     private void splitMap(Map<Integer, List<EveOrder>> leftMap, Map<Integer, List<EveOrder>> rightMap) {
@@ -139,6 +142,83 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         }
     }
 
+    private void queryJitaOrderInfoFromEsi(Map<Integer, OrderParseResult> map) {
+        Iterator<Integer> iter = map.keySet().iterator();
+        while (iter.hasNext()) {
+            Integer id = iter.next();
+            OrderParseResult orderParseResult = map.get(id);
+            orderParseResult.setEveMarketData(getJitaSellOrder(id));
+        }
+    }
+
+    private EveMarketData getJitaSellOrder(Integer id) {
+        List<EveOrder> regionSellOrder = getRegionOrder(id);
+        double min = Integer.MAX_VALUE;
+        for(EveOrder order : regionSellOrder) {
+            if(!PrjConst.STATION_ID_JITA_NAVY4.equals(order.getLocationId())) {
+                continue;
+            }
+            if(order.isBuyOrder()) {
+                continue;
+            }
+            if(order.getPrice() < min) {
+                min = order.getPrice();
+            }
+        }
+        EveMarketData data = new EveMarketData();
+        EveMarketSellOrder eveMarketSellOrder = new EveMarketSellOrder();
+        EveMarketForQuery forQuery = new EveMarketForQuery();
+        List<String> types = new ArrayList<>();
+        types.add(String.valueOf(id));
+        forQuery.setTypes(types);
+        eveMarketSellOrder.setForQuery(forQuery);
+        eveMarketSellOrder.setMin(String.valueOf(min));
+        data.setSell(eveMarketSellOrder);
+        return data;
+    }
+
+    private List<EveOrder> getRegionOrder(Integer id) {
+        List<EveOrder> ret = new ArrayList<>();
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("datasource", PrjConst.DATASOURCE);
+        paramMap.put("page", 1);
+        paramMap.put("type_id", id);
+        int cnt = 0;
+        while (cnt < 3) {
+            HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.ORDER_URL,
+                    PrjConst.REGION_ID_THE_FORGE), paramMap);
+            int status = httpResponse.getStatus();
+            if(status != 200) {
+                cnt++;
+                continue;
+            }
+
+            String body = httpResponse.body();
+            ret.addAll(JSON.parseArray(body, EveOrder.class));
+            long maxPage = Long.parseLong(httpResponse.header("x-pages"));
+            for (int i = 2; i <= maxPage; i ++) {
+                Map<String, Object> paramMap2 = new HashMap<>();
+                paramMap2.put("datasource", PrjConst.DATASOURCE);
+                paramMap2.put("page", i);
+                paramMap2.put("type_id", id);
+                int cnt2 = 0;
+                while (cnt2 < 3) {
+                    HttpResponse httpResponse2 = sendGetRequest(replaceBraces(PrjConst.ORDER_URL,
+                            PrjConst.REGION_ID_THE_FORGE), paramMap2);
+                    int status2 = httpResponse2.getStatus();
+                    if (status2 != 200) {
+                        cnt2++;
+                        continue;
+                    }
+                    ret.addAll(JSON.parseArray(httpResponse2.body(), EveOrder.class));
+                    break;
+                }
+            }
+            break;
+        }
+        return ret;
+    }
+
     private void queryJitaOrderInfoTT(Map<Integer, OrderParseResult> orderResult) {
         List<Integer> typeIDs = new ArrayList<>(orderResult.keySet());
         for (int i = 0; i < typeIDs.size(); i = i + 200) {
@@ -158,7 +238,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         }
     }
 
-    private String listToString(List<Integer> list) {
+    private static String listToString(List<Integer> list) {
         StringBuilder sb = new StringBuilder();
         if (list != null && list.size() > 0) {
             for (int i = 0; i < list.size(); i++) {
@@ -208,7 +288,11 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             System.out.println("线程:" + Thread.currentThread().getName() + "id:" + id + " 正在计算利润和购买量");
 
             OrderParseResult parseResult = result.get(id);
-            parseResult.newComputerProfit(itemMap.get(id).getVolumn());
+            Items items = itemMap.get(id);
+            if(items == null) {
+                continue;
+            }
+            parseResult.newComputerProfit(items.getVolumn());
 //            parseResult.computerProfit();
             //TODO 只拿到了自己当前的垄断，无法获得有购买记录而无卖单的垄断单
             if(parseResult.isMonopoly()) {
@@ -263,8 +347,8 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             HttpResponse httpResponse =
                     sendGetRequest(replaceBraces(PrjConst.ORDER_HISTORY_URL,
                             PrjConst.REGION_ID_OASA), paramMap);
-            String body = httpResponse.body();
-            if(body.contains("error")) {
+            int status = httpResponse.getStatus();
+            if(status != 200) {
                 getCnt++;
                 continue;
             }

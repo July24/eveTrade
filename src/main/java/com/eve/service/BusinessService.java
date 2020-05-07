@@ -1,22 +1,18 @@
 package com.eve.service;
 
-import cn.hutool.core.codec.Base64;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.NumberUtil;
-import cn.hutool.http.Header;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
 import com.eve.dao.ItemsMapper;
-import com.eve.entity.EveMarketData;
-import com.eve.entity.EveOrder;
-import com.eve.entity.OrderHistory;
-import com.eve.entity.OrderParseResult;
+import com.eve.entity.*;
 import com.eve.entity.database.Items;
+import com.eve.entity.database.ItemsExample;
 import com.eve.util.PrjConst;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
@@ -32,23 +28,54 @@ import java.util.concurrent.ForkJoinPool;
 public class BusinessService {
     public static void main(String[] args) throws Exception {
         BusinessService bs = new BusinessService();
-        bs.parseStationMarket(PrjConst.STATION_ID_RF_WINTERCO, null, 400000,
-                0.4);
+        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
+        bs.parseStationMarket(account, PrjConst.STATION_ID_RF_WINTERCO, null, 1000000, 1);
+//        bs.getChangeItemList(account);
+//        bs.getRfRelisstItem(account);
     }
 
-    private String getAccessToken() {
-        Map<String, Object> paramMap = new HashMap<>();
-        paramMap.put("grant_type", "refresh_token");
-        paramMap.put("refresh_token", PrjConst.SANJI_REFRESH_TOKEN);
-        String body = JSON.toJSONString(paramMap);
-        String auth = "Basic "+Base64.encode(PrjConst.CLINET_ID+":"+PrjConst.SECRET_KEY);
-        String ret = HttpRequest.post(PrjConst.TOKEN_URL)
-                .header(Header.CONTENT_TYPE, "application/json")//头信息，多个头信息多次调用此方法即可
-                .header(Header.AUTHORIZATION, auth)
-                .body(body)//表单内容
-                .execute().body();
-        Map map = JSON.parseObject(ret, Map.class);
-        return (String) map.get("access_token");
+    public void getRfRelistItem(AuthAccount account) throws Exception {
+        List<AssertItem> anAssert = getAssert(account);
+        List<AssertItem> rfAssert = filterRFAssert(anAssert);
+        Set<Integer> orderIDs = getMyOrder(account).keySet();
+        List<Items> notList = getNotList(rfAssert, orderIDs);
+        outRelist(notList);
+    }
+
+    private void outRelist(List<Items> items) throws IOException {
+        File file = new File("result/trade/InventoryRelist");
+        FileWriter writer = new FileWriter(file);
+        Iterator<Items> iter = items.iterator();
+        while (iter.hasNext()) {
+            Items id = iter.next();
+            writer.write(id.getEnName());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private List<Items> getNotList(List<AssertItem> rfAssert, Set<Integer> orderIDs) throws Exception {
+        List<Integer> ids = new ArrayList<>();
+        for(AssertItem item : rfAssert) {
+            if(!orderIDs.contains(item.getTypeId())) {
+                ids.add(item.getTypeId());
+            }
+        }
+        ItemsMapper itemsMapper = getItemsMapper();
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andIdIn(ids);
+        return itemsMapper.selectByExample(example);
+    }
+
+    private List<AssertItem> filterRFAssert(List<AssertItem> anAssert) {
+        List<AssertItem> ret = new ArrayList<>();
+        for(AssertItem item : anAssert) {
+            if(Long.parseLong(PrjConst.STATION_ID_RF_WINTERCO) == item.getLocationId()) {
+                ret.add(item);
+            }
+        }
+        return ret;
     }
 
     private HttpResponse sendGetRequest(String url, Map<String, Object> paramMap) {
@@ -104,11 +131,106 @@ public class BusinessService {
         return map;
     }
 
-    public void parseStationMarket(String stationID, String orderListPath,
+    public List<AssertItem> getAssert(AuthAccount account) throws Exception {
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("datasource", PrjConst.DATASOURCE);
+        paramMap.put("page", 1);
+        paramMap.put("token", account.getAccessToken());
+        HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.CHAR_ASSERT_URL,
+                account.getId()), paramMap);
+        String body = httpResponse.body();
+        return JSON.parseArray(body, AssertItem.class);
+    }
+
+    public void getChangeItemList(AuthAccount account) throws Exception {
+        Map<Integer, List<EveOrder>> myOrder = getMyOrder(account);
+        Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), PrjConst.STATION_ID_RF_WINTERCO);
+        List<Items> changeList = getChangeList(myOrder, orderMap);
+        outChangeList(changeList);
+    }
+
+    private void outChangeList(List<Items> changeList) throws Exception {
+        File file = new File("result/trade/changeList");
+        FileWriter writer = new FileWriter(file);
+        for(Items item : changeList) {
+            writer.write(item.getEnName());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private List<Items> getChangeList(Map<Integer, List<EveOrder>> myOrder, Map<Integer, List<EveOrder>> orderMap) throws Exception {
+        List<Integer> changeList = new ArrayList<>();
+        Map<Integer, Double> myLowestList = getMyTypeLowest(myOrder);
+        Iterator<Integer> iter = myLowestList.keySet().iterator();
+        while(iter.hasNext()) {
+            Integer id = iter.next();
+            Double myPrice = myLowestList.get(id);
+            List<EveOrder> orderList = orderMap.get(id);
+            for(EveOrder order : orderList) {
+                if(order.isBuyOrder()) {
+                    continue;
+                }
+                if(order.getPrice() < myPrice) {
+                    changeList.add(order.getTypeId());
+                    break;
+                }
+            }
+        }
+        ItemsMapper itemsMapper = getItemsMapper();
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andIdIn(changeList);
+        return itemsMapper.selectByExample(example);
+    }
+
+    private Map<Integer, Double> getMyTypeLowest(Map<Integer, List<EveOrder>> myOrder) {
+        Map<Integer, Double> map = new HashMap<>();
+        Iterator<Integer> iter = myOrder.keySet().iterator();
+        while (iter.hasNext()) {
+            Integer id = iter.next();
+            List<EveOrder> orderList = myOrder.get(id);
+            double lowest = orderList.get(0).getPrice();
+            for(int i = 1; i < orderList.size(); i++) {
+                EveOrder order = orderList.get(i);
+                if(order.isBuyOrder()) {
+                    continue;
+                }
+                double price = order.getPrice();
+                if(price < lowest) {
+                    lowest = price;
+                }
+            }
+            map.put(id, lowest);
+        }
+        return map;
+    }
+
+    private Map<Integer, List<EveOrder>> getMyOrder(AuthAccount account) {
+        Map<Integer, List<EveOrder>> ret = new HashMap<>();
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("datasource", PrjConst.DATASOURCE);
+        paramMap.put("token", account.getAccessToken());
+        HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.CHAR_ORDER_URL,
+                account.getId()), paramMap);
+        String body = httpResponse.body();
+        List<EveOrder> eveOrders = JSON.parseArray(body, EveOrder.class);
+        for (EveOrder order :eveOrders) {
+            int typeId = order.getTypeId();
+            List<EveOrder> orderList = ret.get(typeId);
+            if(orderList == null) {
+                orderList = new ArrayList<>();
+            }
+            orderList.add(order);
+            ret.put(typeId, orderList);
+        }
+        return ret;
+    }
+
+    public void parseStationMarket(AuthAccount account, String stationID, String orderListPath,
                                    int hopeProfit, double hopeMargin) throws Exception {
-        String accessToken = getAccessToken();
-        Map<Integer, List<EveOrder>> orderMap = getRfOrder(accessToken, stationID);
-        orderMap = pageOrderMap(orderMap, 0,5);
+        Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
+//        orderMap = pageOrderMap(orderMap, 1000, 2000);
         HashMap<Integer, Items> itemMap = getItemMap();
         HashMap<Integer, Integer> selfOrderMap = getOrderMap(orderListPath);
         HashMap<String, Integer> enNameMap = getEnNameMap(itemMap);
@@ -200,7 +322,11 @@ public class BusinessService {
                 monopoly.add(orderParseResult);
                 continue;
             }
-            String record = getPurchaseRecord(orderParseResult, itemMap.get(id).getEnName());
+            Items items = itemMap.get(id);
+            if(items == null) {
+                continue;
+            }
+            String record = getPurchaseRecord(orderParseResult, items.getEnName());
             writer.write(record);
             writer.write("\r\n");
         }
@@ -211,7 +337,11 @@ public class BusinessService {
             writer.write("\r\n");
             writer.write("-----------------------------------");
             writer.write("\r\n");
-            writer.write(getPurchaseRecord(mono, itemMap.get(mono.getTypeID()).getEnName()));
+            Items items = itemMap.get(mono.getTypeID());
+            if(items == null) {
+                continue;
+            }
+            writer.write(getPurchaseRecord(mono, items.getEnName()));
             writer.write("\r\n");
         }
         writer.flush();

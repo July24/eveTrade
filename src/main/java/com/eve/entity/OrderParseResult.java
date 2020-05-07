@@ -29,6 +29,7 @@ public class OrderParseResult implements Serializable {
     EveMarketData eveMarketData;
     StatisticData statisticData = new StatisticData();
     int recommendedCount = 0;
+    JitaData jitaData;
 
     public void addInventory(int count) {
         inventory += count;
