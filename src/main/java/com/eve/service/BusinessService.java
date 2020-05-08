@@ -29,14 +29,17 @@ public class BusinessService {
     public static void main(String[] args) throws Exception {
         BusinessService bs = new BusinessService();
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
-        bs.parseStationMarket(account, PrjConst.STATION_ID_RF_WINTERCO, null, 1000000, 1);
+        AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
+                PrjConst.LEAH_REFRESH_TOKEN);
+        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO, 1000000, 1);
 //        bs.getChangeItemList(account);
-//        bs.getRfRelisstItem(account);
+//        bs.getRfRelistItem(account);
+
     }
 
     public void getRfRelistItem(AuthAccount account) throws Exception {
         List<AssertItem> anAssert = getAssert(account);
-        List<AssertItem> rfAssert = filterRFAssert(anAssert);
+        List<AssertItem> rfAssert = filterRFAssert(anAssert, PrjConst.STATION_ID_RF_WINTERCO);
         Set<Integer> orderIDs = getMyOrder(account).keySet();
         List<Items> notList = getNotList(rfAssert, orderIDs);
         outRelist(notList);
@@ -68,10 +71,10 @@ public class BusinessService {
         return itemsMapper.selectByExample(example);
     }
 
-    private List<AssertItem> filterRFAssert(List<AssertItem> anAssert) {
+    private List<AssertItem> filterRFAssert(List<AssertItem> anAssert, String locationID) {
         List<AssertItem> ret = new ArrayList<>();
         for(AssertItem item : anAssert) {
-            if(Long.parseLong(PrjConst.STATION_ID_RF_WINTERCO) == item.getLocationId()) {
+            if(Long.parseLong(locationID) == item.getLocationId()) {
                 ret.add(item);
             }
         }
@@ -227,15 +230,14 @@ public class BusinessService {
         return ret;
     }
 
-    public void parseStationMarket(AuthAccount account, String stationID, String orderListPath,
+    public void parseStationMarket(AuthAccount account, AuthAccount jitaAccount, String stationID,
                                    int hopeProfit, double hopeMargin) throws Exception {
         Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
 //        orderMap = pageOrderMap(orderMap, 1000, 2000);
         HashMap<Integer, Items> itemMap = getItemMap();
-        HashMap<Integer, Integer> selfOrderMap = getOrderMap(orderListPath);
-        HashMap<String, Integer> enNameMap = getEnNameMap(itemMap);
-        HashMap<Integer, Integer> jitaInventory = getWarehouseMap(PrjConst.PATH_JITA_INVENTORY, enNameMap);
-        HashMap<Integer, Integer> rfInventory = getWarehouseMap(PrjConst.PATH_RF_INVENTORY, enNameMap);
+        HashMap<Integer, Integer> jitaInventory = getWarehouseMap(jitaAccount, PrjConst.STATION_ID_JITA_NAVY4);
+        HashMap<Integer, Integer> rfInventory = getWarehouseMap(account, PrjConst.STATION_ID_RF_WINTERCO);
+        HashMap<Integer, Integer> selfOrderMap = getSelfSellOrderRemainMap(account, PrjConst.STATION_ID_RF_WINTERCO);
 
         ForkJoinPool pool = new ForkJoinPool();
         ParseMarketTask task = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, orderMap, itemMap,
@@ -243,21 +245,6 @@ public class BusinessService {
         pool.invoke(task);
         Map<Integer, OrderParseResult> result = task.join();
         outRecommendedSimple(result, itemMap);
-
-        //TODO map reduce
-        //TODO 分次进行，同时解析Jita订单时注意返回错误格式的处理办法
-//        rfOrder = rfOrder.subList(100, 200);
-//        Map<Integer, OrderParseResult> result = new HashMap<>();
-//        inputRfOrder(result, orderMap);
-//        System.out.println("导入RF订单完毕");
-//        queryJitaOrderInfoTT(result);
-//        System.out.println("导入Jita订单完毕");
-//        System.out.println("getItemMap完毕");
-//        importInventory(result, selfOrderMap, jitaInventory, rfInventory);//todo 传入订单/库存
-//        System.out.println("importInventory完毕");
-//        getRecommendedPurchaseQuantity(result, hopeProfit, profitMargin, itemMap);
-        //TODO map reduce
-        //TODO 输出
     }
 
     private Map<Integer, List<EveOrder>> pageOrderMap(Map<Integer, List<EveOrder>> orderMap, int from, int to) throws Exception {
@@ -458,6 +445,33 @@ public class BusinessService {
         return enNameMap;
     }
 
+    private HashMap<Integer, Integer> getSelfSellOrderRemainMap(AuthAccount account, String locationID) {
+        HashMap<Integer, Integer>ret = new HashMap<>();
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("datasource", PrjConst.DATASOURCE);
+        paramMap.put("token", account.getAccessToken());
+        HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.CHAR_ORDER_URL,
+                account.getId()), paramMap);
+        String body = httpResponse.body();
+        List<EveOrder> eveOrders = JSON.parseArray(body, EveOrder.class);
+        for (EveOrder order :eveOrders) {
+            if(order.isBuyOrder()) {
+                continue;
+            }
+            if(!locationID.equals(order.getLocationId())) {
+                continue;
+            }
+            int typeId = order.getTypeId();
+            Integer remain = ret.get(typeId);
+            if(remain == null) {
+                remain = 0;
+            }
+            remain += order.getVolumeRemain();
+            ret.put(typeId, remain);
+        }
+        return ret;
+    }
+
     private HashMap<Integer, Integer> getOrderMap(String orderListPath) throws IOException {
         HashMap<Integer, Integer> orderMap = new HashMap<>();
         if(orderListPath == null) {
@@ -475,35 +489,22 @@ public class BusinessService {
         in.close();
         return orderMap;
     }
-
-    private HashMap<Integer, Integer> getWarehouseMap(String wareHousePath, HashMap<String, Integer> enNameMap) {
-        HashMap<Integer, Integer> wareMap = new HashMap<>();
-        BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new FileReader(new File(wareHousePath)));
-            String tempString = null;
-            while ((tempString = reader.readLine()) != null) {
-                String[] split = tempString.split("\t");
-                String en_name = split[0];
-                Integer id = enNameMap.get(en_name);
-                if(id == null) {
-                    continue;
-                }
-                int remain = Integer.parseInt(split[1].replace(",", ""));
-                wareMap.put(id, remain);
+    private HashMap<Integer, Integer> getWarehouseMap(AuthAccount account, String locationID) throws Exception {
+        List<AssertItem> anAssert = getAssert(account);
+        HashMap<Integer, Integer> ret = new HashMap<>();
+        for(AssertItem item : anAssert) {
+            if(Long.parseLong(locationID) != item.getLocationId()) {
+                continue;
             }
-            reader.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException e1) {
-                }
+            int typeId = item.getTypeId();
+            Integer remain = ret.get(typeId);
+            if(remain == null) {
+                remain = 0;
             }
+            remain += item.getQuantity();
+            ret.put(typeId, remain);
         }
-        return wareMap;
+        return ret;
     }
 
     private void importOrderList(Map<Integer, OrderParseResult> result, String orderListPath) throws IOException {

@@ -50,8 +50,6 @@ public class LocalMain {
 //                "\\Marketlogs\\My Orders-2020.05.02 0423.txt";
         int hopeProfit = 300000;
         double profitMargin = 0.4;
-        tradeUtil.getOasaMarketRecommendedPurchaseList(null, hopeProfit,
-                profitMargin);
     }
 
     /**

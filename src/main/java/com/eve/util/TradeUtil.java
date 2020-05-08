@@ -107,30 +107,6 @@ public class TradeUtil {
         return sqlSession.getMapper(ItemsMapper.class);
     }
 
-    public void getOasaMarketRecommendedPurchaseList(String orderListPath,
-                                                      int hopeProfit, double profitMargin
-                                                     ) throws Exception {
-        Map<Integer, OrderParseResult> result = new HashMap<>();
-        ItemsMapper itemsMapper = getItemsMapper();
-        parseOasaOrder(result, itemsMapper);
-        setJitaItemInfo(result);
-        importInventory(result, orderListPath, itemsMapper);
-        getRecommendedPurchaseQuantity(result, hopeProfit, profitMargin);
-        saveLocal(result);
-    }
-
-    private void saveLocal(Map<Integer, OrderParseResult> result) throws Exception {
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("result/trade/local/temp"));
-        oos.writeObject(result);
-        oos.close();
-    }
-
-    private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result, int hopeProfit, double hopeMargin) throws IOException {
-        computeFilterProfit(result, hopeProfit, hopeMargin);
-//        outRecommendedDetailCSV();
-        outRecommendedSimple(result);
-    }
-
     private void outRecommendedSimple(Map<Integer, OrderParseResult> result) throws IOException {
         File file = new File("result/trade/simple");
         List<OrderParseResult> monopoly = new ArrayList<>();
