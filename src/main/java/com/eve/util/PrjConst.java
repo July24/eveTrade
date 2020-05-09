@@ -4,7 +4,7 @@ import java.util.Scanner;
 
 public class PrjConst {
     //过滤低流量物品
-    public static final int FILTER_LOW_FLOW = 5;
+
 
     public static final String TOKEN_URL = "https://login.eveonline.com/oauth/token";
     public static final String ORDER_URL = "https://esi.evetech.net/latest/markets/{region_id}/orders/";
@@ -47,4 +47,10 @@ public class PrjConst {
     public static final String PATH_RECOMMEND_BUY_SIMPLE = "result/trade/simple";
 
     public static final String SEPARATOR_PREFIX = "----";
+
+    public static final int BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING = 1;
+    public static final int BLUEPRINT_ACTIVITY_TYPE_COPYING = 5;
+    public static final int BLUEPRINT_ACTIVITY_TYPE_RESEARCH_MATERIAL = 3;
+    public static final int BLUEPRINT_ACTIVITY_TYPE_RESEARCH_TIME = 4;
+    public static final int BLUEPRINT_ACTIVITY_TYPE_INVENTION = 8;
 }

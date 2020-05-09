@@ -25,7 +25,7 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 
-public class BusinessService {
+public class BusinessService extends ServiceBase {
     public static void main(String[] args) throws Exception {
         BusinessService bs = new BusinessService();
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
@@ -175,7 +175,7 @@ public class BusinessService {
                 if(order.isBuyOrder()) {
                     continue;
                 }
-                if(order.getPrice() < myPrice) {
+                if(Double.valueOf(order.getPrice()) < myPrice) {
                     changeList.add(order.getTypeId());
                     break;
                 }
@@ -193,13 +193,13 @@ public class BusinessService {
         while (iter.hasNext()) {
             Integer id = iter.next();
             List<EveOrder> orderList = myOrder.get(id);
-            double lowest = orderList.get(0).getPrice();
+            double lowest = Double.parseDouble(orderList.get(0).getPrice());
             for(int i = 1; i < orderList.size(); i++) {
                 EveOrder order = orderList.get(i);
                 if(order.isBuyOrder()) {
                     continue;
                 }
-                double price = order.getPrice();
+                double price = Double.parseDouble((order.getPrice()));
                 if(price < lowest) {
                     lowest = price;
                 }
@@ -233,6 +233,7 @@ public class BusinessService {
     public void parseStationMarket(AuthAccount account, AuthAccount jitaAccount, String stationID,
                                    int hopeProfit, double hopeMargin) throws Exception {
         Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
+//        List<EveOrder> orderList = orderMap.get(40362);
 //        orderMap = pageOrderMap(orderMap, 1000, 2000);
         HashMap<Integer, Items> itemMap = getItemMap();
         HashMap<Integer, Integer> jitaInventory = getWarehouseMap(jitaAccount, PrjConst.STATION_ID_JITA_NAVY4);
@@ -317,19 +318,21 @@ public class BusinessService {
             writer.write(record);
             writer.write("\r\n");
         }
-        for (OrderParseResult mono : monopoly) {
+        if(monopoly.size() > 0) {
             writer.write("-----------------------------------");
             writer.write("\r\n");
             writer.write("--------------monopoly-------------");
             writer.write("\r\n");
             writer.write("-----------------------------------");
             writer.write("\r\n");
-            Items items = itemMap.get(mono.getTypeID());
-            if(items == null) {
-                continue;
+            for (OrderParseResult mono : monopoly) {
+                Items items = itemMap.get(mono.getTypeID());
+                if(items == null) {
+                    continue;
+                }
+                writer.write(getPurchaseRecord(mono, items.getEnName()));
+                writer.write("\r\n");
             }
-            writer.write(getPurchaseRecord(mono, items.getEnName()));
-            writer.write("\r\n");
         }
         writer.flush();
         writer.close();
@@ -403,7 +406,7 @@ public class BusinessService {
             System.out.println("id:" + id + " 正在计算利润和购买量");
 
             OrderParseResult parseResult = result.get(id);
-            parseResult.newComputerProfit(itemMap.get(id).getVolumn());
+            parseResult.newComputerProfit(itemMap.get(id).getVolume());
 //            parseResult.computerProfit();
             //TODO 只拿到了自己当前的垄断，无法获得有购买记录而无卖单的垄断单
             if(parseResult.isMonopoly()) {
@@ -556,14 +559,6 @@ public class BusinessService {
         }
     }
 
-    private ItemsMapper getItemsMapper() throws IOException {
-        String mybatisConfigPath = "mybatisconfig.xml";
-        InputStream inputStream = Resources.getResourceAsStream(mybatisConfigPath);
-        SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
-        SqlSession sqlSession = sqlSessionFactory.openSession();
-        return sqlSession.getMapper(ItemsMapper.class);
-    }
-
     private void setJitaItemInfo(Map<Integer, OrderParseResult> result) throws IOException {
         Set<Integer> set = result.keySet();
         Map<Integer, EveMarketData> map = queryJitaOrderInfo(new ArrayList<>(set));
@@ -640,11 +635,12 @@ public class BusinessService {
                     orderParseResult = new OrderParseResult();
                 }
                 orderParseResult.setTypeID(typeID);
-                if(order.getPrice() < orderParseResult.getMinPrice()) {
-                    orderParseResult.setMinPrice(order.getPrice());
+                Double orderPrice = Double.valueOf(order.getPrice());
+                if(orderPrice < orderParseResult.getMinPrice()) {
+                    orderParseResult.setMinPrice(orderPrice);
                 }
-                if(order.getPrice() > orderParseResult.getMaxPrice()) {
-                    orderParseResult.setMaxPrice(order.getPrice());
+                if(orderPrice > orderParseResult.getMaxPrice()) {
+                    orderParseResult.setMaxPrice(orderPrice);
                 }
                 //TODO 平均值未设置，是否添加有待考察
                 orderParseResult.setVolRemain(orderParseResult.getVolRemain() + order.getVolumeRemain());

@@ -11,7 +11,7 @@ public class EveOrder {
     private String regionId;
     private int minVolume;
     private String orderId;
-    private double price;
+    private String price;
     private String range;
     private int typeId;
     private int volumeRemain;

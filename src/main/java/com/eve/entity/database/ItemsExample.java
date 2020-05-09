@@ -164,73 +164,363 @@ public class ItemsExample {
             return (Criteria) this;
         }
 
-        public Criteria andEnNameIsNull() {
-            addCriterion("en_name is null");
+        public Criteria andBasepriceIsNull() {
+            addCriterion("basePrice is null");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameIsNotNull() {
-            addCriterion("en_name is not null");
+        public Criteria andBasepriceIsNotNull() {
+            addCriterion("basePrice is not null");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameEqualTo(String value) {
-            addCriterion("en_name =", value, "enName");
+        public Criteria andBasepriceEqualTo(Double value) {
+            addCriterion("basePrice =", value, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameNotEqualTo(String value) {
-            addCriterion("en_name <>", value, "enName");
+        public Criteria andBasepriceNotEqualTo(Double value) {
+            addCriterion("basePrice <>", value, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameGreaterThan(String value) {
-            addCriterion("en_name >", value, "enName");
+        public Criteria andBasepriceGreaterThan(Double value) {
+            addCriterion("basePrice >", value, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameGreaterThanOrEqualTo(String value) {
-            addCriterion("en_name >=", value, "enName");
+        public Criteria andBasepriceGreaterThanOrEqualTo(Double value) {
+            addCriterion("basePrice >=", value, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameLessThan(String value) {
-            addCriterion("en_name <", value, "enName");
+        public Criteria andBasepriceLessThan(Double value) {
+            addCriterion("basePrice <", value, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameLessThanOrEqualTo(String value) {
-            addCriterion("en_name <=", value, "enName");
+        public Criteria andBasepriceLessThanOrEqualTo(Double value) {
+            addCriterion("basePrice <=", value, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameLike(String value) {
-            addCriterion("en_name like", value, "enName");
+        public Criteria andBasepriceIn(List<Double> values) {
+            addCriterion("basePrice in", values, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameNotLike(String value) {
-            addCriterion("en_name not like", value, "enName");
+        public Criteria andBasepriceNotIn(List<Double> values) {
+            addCriterion("basePrice not in", values, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameIn(List<String> values) {
-            addCriterion("en_name in", values, "enName");
+        public Criteria andBasepriceBetween(Double value1, Double value2) {
+            addCriterion("basePrice between", value1, value2, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameNotIn(List<String> values) {
-            addCriterion("en_name not in", values, "enName");
+        public Criteria andBasepriceNotBetween(Double value1, Double value2) {
+            addCriterion("basePrice not between", value1, value2, "baseprice");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameBetween(String value1, String value2) {
-            addCriterion("en_name between", value1, value2, "enName");
+        public Criteria andGraphicidIsNull() {
+            addCriterion("graphicID is null");
             return (Criteria) this;
         }
 
-        public Criteria andEnNameNotBetween(String value1, String value2) {
-            addCriterion("en_name not between", value1, value2, "enName");
+        public Criteria andGraphicidIsNotNull() {
+            addCriterion("graphicID is not null");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidEqualTo(Integer value) {
+            addCriterion("graphicID =", value, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidNotEqualTo(Integer value) {
+            addCriterion("graphicID <>", value, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidGreaterThan(Integer value) {
+            addCriterion("graphicID >", value, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidGreaterThanOrEqualTo(Integer value) {
+            addCriterion("graphicID >=", value, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidLessThan(Integer value) {
+            addCriterion("graphicID <", value, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidLessThanOrEqualTo(Integer value) {
+            addCriterion("graphicID <=", value, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidIn(List<Integer> values) {
+            addCriterion("graphicID in", values, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidNotIn(List<Integer> values) {
+            addCriterion("graphicID not in", values, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidBetween(Integer value1, Integer value2) {
+            addCriterion("graphicID between", value1, value2, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGraphicidNotBetween(Integer value1, Integer value2) {
+            addCriterion("graphicID not between", value1, value2, "graphicid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidIsNull() {
+            addCriterion("groupID is null");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidIsNotNull() {
+            addCriterion("groupID is not null");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidEqualTo(Integer value) {
+            addCriterion("groupID =", value, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidNotEqualTo(Integer value) {
+            addCriterion("groupID <>", value, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidGreaterThan(Integer value) {
+            addCriterion("groupID >", value, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidGreaterThanOrEqualTo(Integer value) {
+            addCriterion("groupID >=", value, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidLessThan(Integer value) {
+            addCriterion("groupID <", value, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidLessThanOrEqualTo(Integer value) {
+            addCriterion("groupID <=", value, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidIn(List<Integer> values) {
+            addCriterion("groupID in", values, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidNotIn(List<Integer> values) {
+            addCriterion("groupID not in", values, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidBetween(Integer value1, Integer value2) {
+            addCriterion("groupID between", value1, value2, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andGroupidNotBetween(Integer value1, Integer value2) {
+            addCriterion("groupID not between", value1, value2, "groupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidIsNull() {
+            addCriterion("iconID is null");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidIsNotNull() {
+            addCriterion("iconID is not null");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidEqualTo(Integer value) {
+            addCriterion("iconID =", value, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidNotEqualTo(Integer value) {
+            addCriterion("iconID <>", value, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidGreaterThan(Integer value) {
+            addCriterion("iconID >", value, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidGreaterThanOrEqualTo(Integer value) {
+            addCriterion("iconID >=", value, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidLessThan(Integer value) {
+            addCriterion("iconID <", value, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidLessThanOrEqualTo(Integer value) {
+            addCriterion("iconID <=", value, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidIn(List<Integer> values) {
+            addCriterion("iconID in", values, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidNotIn(List<Integer> values) {
+            addCriterion("iconID not in", values, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidBetween(Integer value1, Integer value2) {
+            addCriterion("iconID between", value1, value2, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andIconidNotBetween(Integer value1, Integer value2) {
+            addCriterion("iconID not between", value1, value2, "iconid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidIsNull() {
+            addCriterion("marketGroupID is null");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidIsNotNull() {
+            addCriterion("marketGroupID is not null");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidEqualTo(Integer value) {
+            addCriterion("marketGroupID =", value, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidNotEqualTo(Integer value) {
+            addCriterion("marketGroupID <>", value, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidGreaterThan(Integer value) {
+            addCriterion("marketGroupID >", value, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidGreaterThanOrEqualTo(Integer value) {
+            addCriterion("marketGroupID >=", value, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidLessThan(Integer value) {
+            addCriterion("marketGroupID <", value, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidLessThanOrEqualTo(Integer value) {
+            addCriterion("marketGroupID <=", value, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidIn(List<Integer> values) {
+            addCriterion("marketGroupID in", values, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidNotIn(List<Integer> values) {
+            addCriterion("marketGroupID not in", values, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidBetween(Integer value1, Integer value2) {
+            addCriterion("marketGroupID between", value1, value2, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMarketgroupidNotBetween(Integer value1, Integer value2) {
+            addCriterion("marketGroupID not between", value1, value2, "marketgroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidIsNull() {
+            addCriterion("metaGroupID is null");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidIsNotNull() {
+            addCriterion("metaGroupID is not null");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidEqualTo(Integer value) {
+            addCriterion("metaGroupID =", value, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidNotEqualTo(Integer value) {
+            addCriterion("metaGroupID <>", value, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidGreaterThan(Integer value) {
+            addCriterion("metaGroupID >", value, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidGreaterThanOrEqualTo(Integer value) {
+            addCriterion("metaGroupID >=", value, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidLessThan(Integer value) {
+            addCriterion("metaGroupID <", value, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidLessThanOrEqualTo(Integer value) {
+            addCriterion("metaGroupID <=", value, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidIn(List<Integer> values) {
+            addCriterion("metaGroupID in", values, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidNotIn(List<Integer> values) {
+            addCriterion("metaGroupID not in", values, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidBetween(Integer value1, Integer value2) {
+            addCriterion("metaGroupID between", value1, value2, "metagroupid");
+            return (Criteria) this;
+        }
+
+        public Criteria andMetagroupidNotBetween(Integer value1, Integer value2) {
+            addCriterion("metaGroupID not between", value1, value2, "metagroupid");
             return (Criteria) this;
         }
 
@@ -304,63 +594,133 @@ public class ItemsExample {
             return (Criteria) this;
         }
 
-        public Criteria andVolumnIsNull() {
-            addCriterion("volumn is null");
+        public Criteria andEnNameIsNull() {
+            addCriterion("en_name is null");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnIsNotNull() {
-            addCriterion("volumn is not null");
+        public Criteria andEnNameIsNotNull() {
+            addCriterion("en_name is not null");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnEqualTo(Float value) {
-            addCriterion("volumn =", value, "volumn");
+        public Criteria andEnNameEqualTo(String value) {
+            addCriterion("en_name =", value, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnNotEqualTo(Float value) {
-            addCriterion("volumn <>", value, "volumn");
+        public Criteria andEnNameNotEqualTo(String value) {
+            addCriterion("en_name <>", value, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnGreaterThan(Float value) {
-            addCriterion("volumn >", value, "volumn");
+        public Criteria andEnNameGreaterThan(String value) {
+            addCriterion("en_name >", value, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnGreaterThanOrEqualTo(Float value) {
-            addCriterion("volumn >=", value, "volumn");
+        public Criteria andEnNameGreaterThanOrEqualTo(String value) {
+            addCriterion("en_name >=", value, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnLessThan(Float value) {
-            addCriterion("volumn <", value, "volumn");
+        public Criteria andEnNameLessThan(String value) {
+            addCriterion("en_name <", value, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnLessThanOrEqualTo(Float value) {
-            addCriterion("volumn <=", value, "volumn");
+        public Criteria andEnNameLessThanOrEqualTo(String value) {
+            addCriterion("en_name <=", value, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnIn(List<Float> values) {
-            addCriterion("volumn in", values, "volumn");
+        public Criteria andEnNameLike(String value) {
+            addCriterion("en_name like", value, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnNotIn(List<Float> values) {
-            addCriterion("volumn not in", values, "volumn");
+        public Criteria andEnNameNotLike(String value) {
+            addCriterion("en_name not like", value, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnBetween(Float value1, Float value2) {
-            addCriterion("volumn between", value1, value2, "volumn");
+        public Criteria andEnNameIn(List<String> values) {
+            addCriterion("en_name in", values, "enName");
             return (Criteria) this;
         }
 
-        public Criteria andVolumnNotBetween(Float value1, Float value2) {
-            addCriterion("volumn not between", value1, value2, "volumn");
+        public Criteria andEnNameNotIn(List<String> values) {
+            addCriterion("en_name not in", values, "enName");
+            return (Criteria) this;
+        }
+
+        public Criteria andEnNameBetween(String value1, String value2) {
+            addCriterion("en_name between", value1, value2, "enName");
+            return (Criteria) this;
+        }
+
+        public Criteria andEnNameNotBetween(String value1, String value2) {
+            addCriterion("en_name not between", value1, value2, "enName");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeIsNull() {
+            addCriterion("volume is null");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeIsNotNull() {
+            addCriterion("volume is not null");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeEqualTo(Double value) {
+            addCriterion("volume =", value, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeNotEqualTo(Double value) {
+            addCriterion("volume <>", value, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeGreaterThan(Double value) {
+            addCriterion("volume >", value, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeGreaterThanOrEqualTo(Double value) {
+            addCriterion("volume >=", value, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeLessThan(Double value) {
+            addCriterion("volume <", value, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeLessThanOrEqualTo(Double value) {
+            addCriterion("volume <=", value, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeIn(List<Double> values) {
+            addCriterion("volume in", values, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeNotIn(List<Double> values) {
+            addCriterion("volume not in", values, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeBetween(Double value1, Double value2) {
+            addCriterion("volume between", value1, value2, "volume");
+            return (Criteria) this;
+        }
+
+        public Criteria andVolumeNotBetween(Double value1, Double value2) {
+            addCriterion("volume not between", value1, value2, "volume");
             return (Criteria) this;
         }
     }

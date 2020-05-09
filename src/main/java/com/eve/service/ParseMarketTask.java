@@ -18,6 +18,7 @@ import java.util.*;
 import java.util.concurrent.RecursiveTask;
 
 public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult>> {
+    private static final int FILTER_LOW_FLOW = 5;
     int THRESHOLD = 30;
     Map<Integer, Integer> selfOrderMap;
     Map<Integer, Integer> jitaInventory;
@@ -129,11 +130,13 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
                     orderParseResult = new OrderParseResult();
                 }
                 orderParseResult.setTypeID(typeID);
-                if(order.getPrice() < orderParseResult.getMinPrice()) {
-                    orderParseResult.setMinPrice(order.getPrice());
+
+                Double orderPrice = Double.valueOf(order.getPrice());
+                if(orderPrice < orderParseResult.getMinPrice()) {
+                    orderParseResult.setMinPrice(orderPrice);
                 }
-                if(order.getPrice() > orderParseResult.getMaxPrice()) {
-                    orderParseResult.setMaxPrice(order.getPrice());
+                if(orderPrice > orderParseResult.getMaxPrice()) {
+                    orderParseResult.setMaxPrice(orderPrice);
                 }
                 //TODO 平均值未设置，是否添加有待考察
                 orderParseResult.setVolRemain(orderParseResult.getVolRemain() + order.getVolumeRemain());
@@ -161,8 +164,9 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             if(order.isBuyOrder()) {
                 continue;
             }
-            if(order.getPrice() < min) {
-                min = order.getPrice();
+            Double orderPrice = Double.valueOf(order.getPrice());
+            if(orderPrice < min) {
+                min = orderPrice;
             }
         }
         EveMarketData data = new EveMarketData();
@@ -263,11 +267,11 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
                 orderParseResult.addInventory(orderCnt);
             }
             Integer jitaCnt = jitaInventory.get(id);
-            if(orderCnt != null) {
+            if(jitaCnt != null) {
                 orderParseResult.addInventory(jitaCnt);
             }
             Integer rfCnt = rfInventory.get(id);
-            if(orderCnt != null) {
+            if(rfCnt != null) {
                 orderParseResult.addInventory(rfCnt);
             }
         }
@@ -292,7 +296,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             if(items == null) {
                 continue;
             }
-            parseResult.newComputerProfit(items.getVolumn());
+            parseResult.newComputerProfit(items.getVolume());
 //            parseResult.computerProfit();
             //TODO 只拿到了自己当前的垄断，无法获得有购买记录而无卖单的垄断单
             if(parseResult.isMonopoly()) {
@@ -330,7 +334,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
                 continue;
             }
             double dailyVolume = getDailyVolume(typeID);
-            if(dailyVolume < PrjConst.FILTER_LOW_FLOW) {
+            if(dailyVolume < FILTER_LOW_FLOW) {
                 iter.remove();
                 continue;
             }

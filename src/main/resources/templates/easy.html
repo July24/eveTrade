@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Layui</title>
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+
+    <link rel="stylesheet" href="https://www.layuicdn.com/layui/css/layui.css"  media="all">
+    <!-- 注意：如果你直接复制所有代码到本地，上述css路径需要改成你本地的 -->
+</head>
+<body>
+<datalist id="mylist"></datalist>
+<div class="layui-form-item">
+    <div class="layui-input-block">
+        <input type="text" name="title" id="input" required  lay-verify="required" placeholder="请输入查询物品"
+               class="layui-input"  autocomplete="on" list="mylist">
+    </div>
+    <div class="layui-input-block">
+        <button class="layui-btn" id="query" onclick="query()">查询</button>
+    </div>
+</div>
+卖单列表：
+<table class="layui-hide" id="sell"></table>
+买单列表：
+<table class="layui-hide" id="buy"></table>
+
+
+<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.js"></script>
+<script src="https://www.layuicdn.com/layui/layui.js" charset="utf-8"></script>
+<!-- 注意：如果你直接复制所有代码到本地，上述js路径需要改成你本地的 -->
+
+<script>
+    function search(obj){
+        var input = document.getElementById("input");
+        if(input.value.length < 3) {
+            return;
+        }
+        var encode = encodeURI(input.value);
+        $("#mylist").empty();
+        // var result = $.ajax({url:"/query/likeQuery?name=" +encode,async:false});
+
+        $.ajax({
+            //请求方式
+            type : "GET",
+            //请求地址
+            url:"/query/likeQuery?name=" +encode,
+            //请求成功
+            success : function(result) {
+                for(i = 0; i < result.length; ++i)
+                {
+                    var option="<option>"+ result[i] +"</option>";
+                    $("#mylist").append(option);
+                }
+                console.log(result);
+            },
+            //请求失败，包含具体的错误信息
+            error : function(e){
+                console.log(e.status);
+                console.log(e.responseText);
+            }
+        });
+
+
+    }
+</script>
+
+<script>
+    function query() {
+        var input = document.getElementById("input");
+
+        var encode = encodeURI(input.value);
+        layui.use('table', function(){
+            var table = layui.table;
+
+            table.render({
+                elem: '#sell'
+                ,url:'/query/queryJita?name='+encode
+                ,cellMinWidth: 80 //全局定义常规单元格的最小宽度，layui 2.2.1 新增
+                ,cols: [
+                    [
+                        {field:'buyOrder', title: '是否为买单', sort: true}
+                        ,{field:'volumeRemain', title: '数量', sort: true}
+                        ,{field:'price', title: '价格', sort: true}
+                        ,{field:'issued', title: '发布时间', sort: true}
+                    ]
+                ]
+                ,parseData: function(res){ //res 即为原始返回的数据
+                    return {
+                        "code": 0, //解析接口状态
+                        "msg": '', //解析提示文本
+                        "count": res.sell.total, //解析数据长度
+                        "data": res.sell //解析数据列表
+                    };
+                }
+            });
+
+        });
+        layui.use('table', function(){
+            var table = layui.table;
+            table.render({
+                elem: '#buy'
+                ,url:'/query/queryJita?name='+encode
+                ,cellMinWidth: 80 //全局定义常规单元格的最小宽度，layui 2.2.1 新增
+                ,cols: [
+                    [
+                        {field:'buyOrder', title: '是否为买单', sort: true}
+                        ,{field:'volumeRemain', title: '数量', sort: true}
+                        ,{field:'price', title: '价格', sort: true}
+                        ,{field:'issued', title: '发布时间', sort: true}
+                    ]
+                ]
+                ,parseData: function(res){ //res 即为原始返回的数据
+                    return {
+                        "code": 0, //解析接口状态
+                        "msg": '', //解析提示文本
+                        "count": res.buy.total, //解析数据长度
+                        "data": res.buy //解析数据列表
+                    };
+                }
+            });
+        });
+    }
+
+</script>
+
+</body>
+</html>

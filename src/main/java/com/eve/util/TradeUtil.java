@@ -247,7 +247,7 @@ public class TradeUtil {
             Items item = order.getItem();
             EveMarketSellOrder sell = order.getEveMarketData().getSell();
             csvPrinter.printRecord(order.getTypeID(), item.getCnName(), item.getEnName(),
-                    item.getVolumn(), order.getMinPrice(), order.getMaxPrice(), order.getAverage(),
+                    item.getVolume(), order.getMinPrice(), order.getMaxPrice(), order.getAverage(),
                     order.getVolRemain(), sell.getMin(), sell.getMax(), sell.getAvg(), sell.getVariance(),
                     sell.getStdDev(), sell.getMedian(), sell.getVolume());
         }
@@ -456,7 +456,7 @@ public class TradeUtil {
             } else {
                 OrderParseResult orderParseResult = map.get(record.getId());
                 double profit =
-                        (orderParseResult.getMinPrice() - record.getPrice() - PrjConst.EXPRESS_FAX_CUBIC_METRES * orderParseResult.getItem().getVolumn()) * (1 - PrjConst.AVG_BROKER_FAX) * (1 - PrjConst.SELL_FAX);
+                        (orderParseResult.getMinPrice() - record.getPrice() - PrjConst.EXPRESS_FAX_CUBIC_METRES * orderParseResult.getItem().getVolume()) * (1 - PrjConst.AVG_BROKER_FAX) * (1 - PrjConst.SELL_FAX);
                 double margin = NumberUtil.div(profit, record.getPrice(), 2);
                 if(profit < hopeProfit && margin < hopeProfit) {
                     record.setCount(reduceBuyCount(record.getCount()));

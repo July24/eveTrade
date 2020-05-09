@@ -39,7 +39,7 @@ public class OrderParseResult implements Serializable {
         volRemain -= count;
     }
 
-    public void newComputerProfit(float volumn) {
+    public void newComputerProfit(double volumn) {
         if(volRemain == 0) {
             monopoly = true;
             return;
@@ -69,7 +69,7 @@ public class OrderParseResult implements Serializable {
             return;
         }
         double profit =
-                (minPrice - jitaSell - PrjConst.EXPRESS_FAX_CUBIC_METRES * item.getVolumn()) * (1 - PrjConst.AVG_BROKER_FAX) * (1 - PrjConst.SELL_FAX);
+                (minPrice - jitaSell - PrjConst.EXPRESS_FAX_CUBIC_METRES * item.getVolume()) * (1 - PrjConst.AVG_BROKER_FAX) * (1 - PrjConst.SELL_FAX);
         BigDecimal round = NumberUtil.round(profit, 2);
         statisticData.setProfit(round.intValue());
         double margin = NumberUtil.div(round.doubleValue(), jitaSell, 2);

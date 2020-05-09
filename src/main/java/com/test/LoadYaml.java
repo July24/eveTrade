@@ -25,11 +25,12 @@ public class LoadYaml {
 
     public static void writeCSV() {
         try {
-            Appendable out = new PrintWriter("t1Blueprint.csv");
+            Appendable out = new PrintWriter("item.csv");
             CSVPrinter csvPrinter = CSVFormat.DEFAULT.print(out);
             Yaml yaml = new Yaml();
 //            URL url = LoadYaml.class.getClassLoader().getResource("test.yaml");
             File yamlFile = new File("D:\\ideaproject\\loadYamlFile\\src\\main\\resources\\typeIDs.yaml");
+            csvPrinter.printRecord("id","basePrice","graphicID","groupID","iconID","marketGroupID","metaGroupID","cn_name","en_name","volume");
             if (yamlFile != null) {
                 //获取test.yaml文件中的配置数据，然后转换为obj，
 //                Object obj =yaml.load(new FileInputStream(url.getFile()));
@@ -53,16 +54,17 @@ public class LoadYaml {
 //                    if(!"1".equals(String.valueOf(metaGroupID))) {
 //                        continue;
 //                    }
-                    Object metaGroupID = item.get("metaGroupID");
-                    if(metaGroupID != null) {
-                        continue;
-                    }
-                    String en = String.valueOf(name.get("en"));
-                    if(!en.contains("Blueprint")) {
-                        continue;
-                    }
+//                    Object metaGroupID = item.get("metaGroupID");
+//                    if(metaGroupID != null) {
+//                        continue;
+//                    }
+//                    String en = String.valueOf(name.get("en"));
+//                    if(!en.contains("Blueprint")) {
+//                        continue;
+//                    }
 //                    csvPrinter.printRecord(id, name.get("zh"), name.get("en"), item.get("volume"));
-                    csvPrinter.printRecord(id, name.get("zh"), name.get("en"), item.get("metaGroupID"));
+                    csvPrinter.printRecord(id, item.get("basePrice"),item.get("graphicID"),item.get("groupID"),
+                            item.get("iconID"),item.get("marketGroupID"), item.get("metaGroupID"),name.get("zh"), name.get("en"), item.get("volume"));
                 }
             }
             csvPrinter.flush();
