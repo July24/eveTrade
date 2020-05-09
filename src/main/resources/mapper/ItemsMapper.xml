@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.eve.dao.ItemsMapper">
-  <cache eviction="LRU" flushInterval="60000" size="512" readOnly="true"/>
   <resultMap id="BaseResultMap" type="com.eve.entity.database.Items">
     <id column="id" jdbcType="INTEGER" property="id" />
-    <result column="en_name" jdbcType="VARCHAR" property="enName" />
+    <result column="basePrice" jdbcType="DOUBLE" property="baseprice" />
+    <result column="graphicID" jdbcType="INTEGER" property="graphicid" />
+    <result column="groupID" jdbcType="INTEGER" property="groupid" />
+    <result column="iconID" jdbcType="INTEGER" property="iconid" />
+    <result column="marketGroupID" jdbcType="INTEGER" property="marketgroupid" />
+    <result column="metaGroupID" jdbcType="INTEGER" property="metagroupid" />
     <result column="cn_name" jdbcType="VARCHAR" property="cnName" />
-    <result column="volumn" jdbcType="REAL" property="volumn" />
+    <result column="en_name" jdbcType="VARCHAR" property="enName" />
+    <result column="volume" jdbcType="DOUBLE" property="volume" />
   </resultMap>
   <sql id="Example_Where_Clause">
     <where>
@@ -67,7 +72,8 @@
     </where>
   </sql>
   <sql id="Base_Column_List">
-    id, en_name, cn_name, volumn
+    id, basePrice, graphicID, groupID, iconID, marketGroupID, metaGroupID, cn_name, en_name, 
+    volume
   </sql>
   <select id="selectByExample" parameterType="com.eve.entity.database.ItemsExample" resultMap="BaseResultMap">
     select
@@ -100,10 +106,14 @@
     </if>
   </delete>
   <insert id="insert" parameterType="com.eve.entity.database.Items">
-    insert into items (id, en_name, cn_name, 
-      volumn)
-    values (#{id,jdbcType=INTEGER}, #{enName,jdbcType=VARCHAR}, #{cnName,jdbcType=VARCHAR}, 
-      #{volumn,jdbcType=REAL})
+    insert into items (id, basePrice, graphicID, 
+      groupID, iconID, marketGroupID, 
+      metaGroupID, cn_name, en_name, 
+      volume)
+    values (#{id,jdbcType=INTEGER}, #{baseprice,jdbcType=DOUBLE}, #{graphicid,jdbcType=INTEGER}, 
+      #{groupid,jdbcType=INTEGER}, #{iconid,jdbcType=INTEGER}, #{marketgroupid,jdbcType=INTEGER}, 
+      #{metagroupid,jdbcType=INTEGER}, #{cnName,jdbcType=VARCHAR}, #{enName,jdbcType=VARCHAR}, 
+      #{volume,jdbcType=DOUBLE})
   </insert>
   <insert id="insertSelective" parameterType="com.eve.entity.database.Items">
     insert into items
@@ -111,28 +121,64 @@
       <if test="id != null">
         id,
       </if>
-      <if test="enName != null">
-        en_name,
+      <if test="baseprice != null">
+        basePrice,
+      </if>
+      <if test="graphicid != null">
+        graphicID,
+      </if>
+      <if test="groupid != null">
+        groupID,
+      </if>
+      <if test="iconid != null">
+        iconID,
+      </if>
+      <if test="marketgroupid != null">
+        marketGroupID,
+      </if>
+      <if test="metagroupid != null">
+        metaGroupID,
       </if>
       <if test="cnName != null">
         cn_name,
       </if>
-      <if test="volumn != null">
-        volumn,
+      <if test="enName != null">
+        en_name,
+      </if>
+      <if test="volume != null">
+        volume,
       </if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="id != null">
         #{id,jdbcType=INTEGER},
       </if>
-      <if test="enName != null">
-        #{enName,jdbcType=VARCHAR},
+      <if test="baseprice != null">
+        #{baseprice,jdbcType=DOUBLE},
+      </if>
+      <if test="graphicid != null">
+        #{graphicid,jdbcType=INTEGER},
+      </if>
+      <if test="groupid != null">
+        #{groupid,jdbcType=INTEGER},
+      </if>
+      <if test="iconid != null">
+        #{iconid,jdbcType=INTEGER},
+      </if>
+      <if test="marketgroupid != null">
+        #{marketgroupid,jdbcType=INTEGER},
+      </if>
+      <if test="metagroupid != null">
+        #{metagroupid,jdbcType=INTEGER},
       </if>
       <if test="cnName != null">
         #{cnName,jdbcType=VARCHAR},
       </if>
-      <if test="volumn != null">
-        #{volumn,jdbcType=REAL},
+      <if test="enName != null">
+        #{enName,jdbcType=VARCHAR},
+      </if>
+      <if test="volume != null">
+        #{volume,jdbcType=DOUBLE},
       </if>
     </trim>
   </insert>
@@ -148,14 +194,32 @@
       <if test="record.id != null">
         id = #{record.id,jdbcType=INTEGER},
       </if>
-      <if test="record.enName != null">
-        en_name = #{record.enName,jdbcType=VARCHAR},
+      <if test="record.baseprice != null">
+        basePrice = #{record.baseprice,jdbcType=DOUBLE},
+      </if>
+      <if test="record.graphicid != null">
+        graphicID = #{record.graphicid,jdbcType=INTEGER},
+      </if>
+      <if test="record.groupid != null">
+        groupID = #{record.groupid,jdbcType=INTEGER},
+      </if>
+      <if test="record.iconid != null">
+        iconID = #{record.iconid,jdbcType=INTEGER},
+      </if>
+      <if test="record.marketgroupid != null">
+        marketGroupID = #{record.marketgroupid,jdbcType=INTEGER},
+      </if>
+      <if test="record.metagroupid != null">
+        metaGroupID = #{record.metagroupid,jdbcType=INTEGER},
       </if>
       <if test="record.cnName != null">
         cn_name = #{record.cnName,jdbcType=VARCHAR},
       </if>
-      <if test="record.volumn != null">
-        volumn = #{record.volumn,jdbcType=REAL},
+      <if test="record.enName != null">
+        en_name = #{record.enName,jdbcType=VARCHAR},
+      </if>
+      <if test="record.volume != null">
+        volume = #{record.volume,jdbcType=DOUBLE},
       </if>
     </set>
     <if test="_parameter != null">
@@ -165,9 +229,15 @@
   <update id="updateByExample" parameterType="map">
     update items
     set id = #{record.id,jdbcType=INTEGER},
-      en_name = #{record.enName,jdbcType=VARCHAR},
+      basePrice = #{record.baseprice,jdbcType=DOUBLE},
+      graphicID = #{record.graphicid,jdbcType=INTEGER},
+      groupID = #{record.groupid,jdbcType=INTEGER},
+      iconID = #{record.iconid,jdbcType=INTEGER},
+      marketGroupID = #{record.marketgroupid,jdbcType=INTEGER},
+      metaGroupID = #{record.metagroupid,jdbcType=INTEGER},
       cn_name = #{record.cnName,jdbcType=VARCHAR},
-      volumn = #{record.volumn,jdbcType=REAL}
+      en_name = #{record.enName,jdbcType=VARCHAR},
+      volume = #{record.volume,jdbcType=DOUBLE}
     <if test="_parameter != null">
       <include refid="Update_By_Example_Where_Clause" />
     </if>
@@ -175,23 +245,47 @@
   <update id="updateByPrimaryKeySelective" parameterType="com.eve.entity.database.Items">
     update items
     <set>
-      <if test="enName != null">
-        en_name = #{enName,jdbcType=VARCHAR},
+      <if test="baseprice != null">
+        basePrice = #{baseprice,jdbcType=DOUBLE},
+      </if>
+      <if test="graphicid != null">
+        graphicID = #{graphicid,jdbcType=INTEGER},
+      </if>
+      <if test="groupid != null">
+        groupID = #{groupid,jdbcType=INTEGER},
+      </if>
+      <if test="iconid != null">
+        iconID = #{iconid,jdbcType=INTEGER},
+      </if>
+      <if test="marketgroupid != null">
+        marketGroupID = #{marketgroupid,jdbcType=INTEGER},
+      </if>
+      <if test="metagroupid != null">
+        metaGroupID = #{metagroupid,jdbcType=INTEGER},
       </if>
       <if test="cnName != null">
         cn_name = #{cnName,jdbcType=VARCHAR},
       </if>
-      <if test="volumn != null">
-        volumn = #{volumn,jdbcType=REAL},
+      <if test="enName != null">
+        en_name = #{enName,jdbcType=VARCHAR},
+      </if>
+      <if test="volume != null">
+        volume = #{volume,jdbcType=DOUBLE},
       </if>
     </set>
     where id = #{id,jdbcType=INTEGER}
   </update>
   <update id="updateByPrimaryKey" parameterType="com.eve.entity.database.Items">
     update items
-    set en_name = #{enName,jdbcType=VARCHAR},
+    set basePrice = #{baseprice,jdbcType=DOUBLE},
+      graphicID = #{graphicid,jdbcType=INTEGER},
+      groupID = #{groupid,jdbcType=INTEGER},
+      iconID = #{iconid,jdbcType=INTEGER},
+      marketGroupID = #{marketgroupid,jdbcType=INTEGER},
+      metaGroupID = #{metagroupid,jdbcType=INTEGER},
       cn_name = #{cnName,jdbcType=VARCHAR},
-      volumn = #{volumn,jdbcType=REAL}
+      en_name = #{enName,jdbcType=VARCHAR},
+      volume = #{volume,jdbcType=DOUBLE}
     where id = #{id,jdbcType=INTEGER}
   </update>
 </mapper>
