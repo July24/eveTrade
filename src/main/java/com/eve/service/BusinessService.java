@@ -81,59 +81,6 @@ public class BusinessService extends ServiceBase {
         return ret;
     }
 
-    private HttpResponse sendGetRequest(String url, Map<String, Object> paramMap) {
-        return HttpRequest.get(url).form(paramMap).execute();
-    }
-
-    private String replaceBraces(String url, String replace) {
-        StringBuilder sb = new StringBuilder(url);
-        int i1 = sb.indexOf("{");
-        int i2 = sb.indexOf("}") + 1;
-        StringBuilder newSb = sb.replace(i1, i2, replace);
-        return newSb.toString();
-    }
-
-    private HashMap<Integer, List<EveOrder>> getRfOrder(String accessToken, String stationID) {
-        Map<String, Object> paramMap = new HashMap<>();
-        paramMap.put("datasource", PrjConst.DATASOURCE);
-        paramMap.put("page", 1);
-        paramMap.put("token", accessToken);
-        HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.LIST_STRUCTURE_ORDER_URL,
-                stationID), paramMap);
-        String body = httpResponse.body();
-        List<EveOrder> eveOrders = JSON.parseArray(body, EveOrder.class);
-        int size = Integer.parseInt(httpResponse.header("x-pages"));
-        for(int i = 2; i <= size; i++) {
-            Map<String, Object> paramMap2 = new HashMap<>();
-            paramMap2.put("datasource", PrjConst.DATASOURCE);
-            paramMap2.put("page", i);
-            paramMap2.put("token", accessToken);
-            String body2 =
-                    sendGetRequest(replaceBraces(PrjConst.LIST_STRUCTURE_ORDER_URL,
-                    stationID), paramMap2).body();
-            if(body2.contains("error")) {
-                i--;
-                continue;
-            }
-            List<EveOrder> eveOrders2 = JSON.parseArray(body2, EveOrder.class);
-            eveOrders.addAll(eveOrders2);
-        }
-        return settleStationOrder(eveOrders);
-    }
-
-    private HashMap<Integer, List<EveOrder>> settleStationOrder(List<EveOrder> eveOrders) {
-        HashMap<Integer, List<EveOrder>> map = new HashMap<>();
-        for(EveOrder eveOrder : eveOrders) {
-            List<EveOrder> typeOrders = map.get(eveOrder.getTypeId());
-            if(typeOrders == null) {
-                typeOrders = new ArrayList<>();
-            }
-            typeOrders.add(eveOrder);
-            map.put(eveOrder.getTypeId(), typeOrders);
-        }
-        return map;
-    }
-
     public List<AssertItem> getAssert(AuthAccount account) throws Exception {
         Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("datasource", PrjConst.DATASOURCE);

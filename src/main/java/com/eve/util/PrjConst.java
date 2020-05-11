@@ -3,8 +3,9 @@ package com.eve.util;
 import java.util.Scanner;
 
 public class PrjConst {
+    public static final Integer[] OWN_BLUEPRINT = new Integer[]{887,890,894,
+            892,888,893,889,891};
     //过滤低流量物品
-
 
     public static final String TOKEN_URL = "https://login.eveonline.com/oauth/token";
     public static final String ORDER_URL = "https://esi.evetech.net/latest/markets/{region_id}/orders/";
