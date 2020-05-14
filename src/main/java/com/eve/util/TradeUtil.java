@@ -2,6 +2,8 @@ package com.eve.util;
 
 
 import cn.hutool.core.util.NumberUtil;
+import cn.hutool.http.HttpRequest;
+import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -107,34 +109,58 @@ public class TradeUtil {
         return sqlSession.getMapper(ItemsMapper.class);
     }
 
-    private void outRecommendedSimple(Map<Integer, OrderParseResult> result) throws IOException {
-        File file = new File("result/trade/simple");
-        List<OrderParseResult> monopoly = new ArrayList<>();
-        FileWriter writer = new FileWriter(file);
-        Iterator<Integer> iter = result.keySet().iterator();
-        while (iter.hasNext()) {
-            Integer id = iter.next();
-            OrderParseResult orderParseResult = result.get(id);
-            if(orderParseResult.isMonopoly()) {
-                monopoly.add(orderParseResult);
+    public static List<EveOrder> getRegionOrder(Integer id, String regionID) {
+        List<EveOrder> ret = new ArrayList<>();
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("datasource", PrjConst.DATASOURCE);
+        paramMap.put("page", 1);
+        paramMap.put("type_id", id);
+        int cnt = 0;
+        while (cnt < 3) {
+            HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.ORDER_URL,
+                    regionID), paramMap);
+            int status = httpResponse.getStatus();
+            if(status != 200) {
+                cnt++;
                 continue;
             }
-            String record = getPurchaseRecord(orderParseResult);
-            writer.write(record);
-            writer.write("\r\n");
+
+            String body = httpResponse.body();
+            ret.addAll(JSON.parseArray(body, EveOrder.class));
+            long maxPage = Long.parseLong(httpResponse.header("x-pages"));
+            for (int i = 2; i <= maxPage; i ++) {
+                Map<String, Object> paramMap2 = new HashMap<>();
+                paramMap2.put("datasource", PrjConst.DATASOURCE);
+                paramMap2.put("page", i);
+                paramMap2.put("type_id", id);
+                int cnt2 = 0;
+                while (cnt2 < 3) {
+                    HttpResponse httpResponse2 = sendGetRequest(replaceBraces(PrjConst.ORDER_URL,
+                            PrjConst.REGION_ID_THE_FORGE), paramMap2);
+                    int status2 = httpResponse2.getStatus();
+                    if (status2 != 200) {
+                        cnt2++;
+                        continue;
+                    }
+                    ret.addAll(JSON.parseArray(httpResponse2.body(), EveOrder.class));
+                    break;
+                }
+            }
+            break;
         }
-        for (OrderParseResult mono : monopoly) {
-            writer.write("-----------------------------------");
-            writer.write("\r\n");
-            writer.write("--------------monopoly-------------");
-            writer.write("\r\n");
-            writer.write("-----------------------------------");
-            writer.write("\r\n");
-            writer.write(getPurchaseRecord(mono));
-            writer.write("\r\n");
-        }
-        writer.flush();
-        writer.close();
+        return ret;
+    }
+
+    public static HttpResponse sendGetRequest(String url, Map<String, Object> paramMap) {
+        return HttpRequest.get(url).form(paramMap).execute();
+    }
+
+    public static String replaceBraces(String url, String replace) {
+        StringBuilder sb = new StringBuilder(url);
+        int i1 = sb.indexOf("{");
+        int i2 = sb.indexOf("}") + 1;
+        StringBuilder newSb = sb.replace(i1, i2, replace);
+        return newSb.toString();
     }
 
     private String getPurchaseRecord(OrderParseResult orderParseResult) {
@@ -143,31 +169,6 @@ public class TradeUtil {
         sb.append(" x");
         sb.append(orderParseResult.getRecommendedCount());
         return sb.toString();
-    }
-
-    private void computeFilterProfit(Map<Integer, OrderParseResult> result, int hopeProfit,
-                                              double hopeMargin) {
-        Iterator<Integer> iter = result.keySet().iterator();
-        while(iter.hasNext()) {
-            Integer id = iter.next();
-            OrderParseResult parseResult = result.get(id);
-            parseResult.computerProfit();
-            if(parseResult.isMonopoly()) {
-                parseResult.predictMonoPurchaseCount();
-                if(parseResult.getRecommendedCount() < 1) {
-                    iter.remove();
-                }
-            } else {
-                if(parseResult.getStatisticData().getProfit() < hopeProfit && parseResult.getStatisticData().getProfitMargin() < hopeMargin) {
-                    iter.remove();
-                    continue;
-                }
-                parseResult.predictPurchaseCount();
-                if (parseResult.getRecommendedCount() <= 0) {
-                    iter.remove();
-                }
-            }
-        }
     }
 
     private void importInventory(Map<Integer, OrderParseResult> result, String orderListPath,

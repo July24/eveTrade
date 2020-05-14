@@ -12,30 +12,32 @@ import com.alibaba.fastjson.JSON;
 import com.eve.entity.*;
 import com.eve.entity.database.Items;
 import com.eve.util.PrjConst;
+import com.eve.util.TradeUtil;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.RecursiveTask;
 
 public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult>> {
-    private static final int FILTER_LOW_FLOW = 5;
     int THRESHOLD = 30;
     Map<Integer, Integer> selfOrderMap;
     Map<Integer, Integer> jitaInventory;
     Map<Integer, Integer> rfInventory;
     Map<Integer, List<EveOrder>> orderMap;
     Map<Integer, Items> itemMap;
-    int hopeProfit;
-    double hopeMargin;
+    double hopeRoi;
+    int flowFilter;
 
-    public ParseMarketTask(Map<Integer, Integer> selfOrderMap, Map<Integer, Integer> jitaInventory, Map<Integer, Integer> rfInventory, Map<Integer, List<EveOrder>> orderMap, Map<Integer, Items> itemMap, int hopeProfit, double hopeMargin) {
+    public ParseMarketTask(Map<Integer, Integer> selfOrderMap, Map<Integer, Integer> jitaInventory, Map<Integer,
+            Integer> rfInventory, Map<Integer, List<EveOrder>> orderMap, Map<Integer, Items> itemMap,
+                           int flowFilter, double hopeRoi) {
         this.selfOrderMap = selfOrderMap;
         this.jitaInventory = jitaInventory;
         this.rfInventory = rfInventory;
         this.orderMap = orderMap;
         this.itemMap = itemMap;
-        this.hopeProfit = hopeProfit;
-        this.hopeMargin = hopeMargin;
+        this.flowFilter = flowFilter;
+        this.hopeRoi = hopeRoi;
     }
 
     @Override
@@ -53,7 +55,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             importInventory(result, selfOrderMap, jitaInventory, rfInventory);//todo 传入订单/库存
 //            System.out.println("importInventory完毕");
             try {
-                getRecommendedPurchaseQuantity(result, hopeProfit, hopeMargin, itemMap);
+                getRecommendedPurchaseQuantity(result, flowFilter, hopeRoi, itemMap);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -63,9 +65,9 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             HashMap<Integer, List<EveOrder>> rightMap = new HashMap<>();
             splitMap(leftMap, rightMap);
             ParseMarketTask left = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, leftMap, itemMap,
-                    hopeProfit, hopeMargin);
+                    flowFilter, hopeRoi);
             ParseMarketTask right = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, rightMap, itemMap,
-                    hopeProfit, hopeMargin);
+                    flowFilter, hopeRoi);
             invokeAll(left, right);
             Map<Integer, OrderParseResult> merge = left.join();
             merge.putAll(right.join());
@@ -95,12 +97,6 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
 //                orderParseResult.setEveMarketData(data);
 //            }
         }
-    }
-
-    public static void main(String[] args) {
-        ParseMarketTask task = new ParseMarketTask(null, null, null, null, null,0,0);
-        task.getRegionOrder(609);
-
     }
 
     private void splitMap(Map<Integer, List<EveOrder>> leftMap, Map<Integer, List<EveOrder>> rightMap) {
@@ -155,7 +151,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
     }
 
     private EveMarketData getJitaSellOrder(Integer id) {
-        List<EveOrder> regionSellOrder = getRegionOrder(id);
+        List<EveOrder> regionSellOrder = TradeUtil.getRegionOrder(id, PrjConst.REGION_ID_THE_FORGE);
         double min = Integer.MAX_VALUE;
         for(EveOrder order : regionSellOrder) {
             if(!PrjConst.STATION_ID_JITA_NAVY4.equals(order.getLocationId())) {
@@ -179,48 +175,6 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         eveMarketSellOrder.setMin(String.valueOf(min));
         data.setSell(eveMarketSellOrder);
         return data;
-    }
-
-    private List<EveOrder> getRegionOrder(Integer id) {
-        List<EveOrder> ret = new ArrayList<>();
-        Map<String, Object> paramMap = new HashMap<>();
-        paramMap.put("datasource", PrjConst.DATASOURCE);
-        paramMap.put("page", 1);
-        paramMap.put("type_id", id);
-        int cnt = 0;
-        while (cnt < 3) {
-            HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.ORDER_URL,
-                    PrjConst.REGION_ID_THE_FORGE), paramMap);
-            int status = httpResponse.getStatus();
-            if(status != 200) {
-                cnt++;
-                continue;
-            }
-
-            String body = httpResponse.body();
-            ret.addAll(JSON.parseArray(body, EveOrder.class));
-            long maxPage = Long.parseLong(httpResponse.header("x-pages"));
-            for (int i = 2; i <= maxPage; i ++) {
-                Map<String, Object> paramMap2 = new HashMap<>();
-                paramMap2.put("datasource", PrjConst.DATASOURCE);
-                paramMap2.put("page", i);
-                paramMap2.put("type_id", id);
-                int cnt2 = 0;
-                while (cnt2 < 3) {
-                    HttpResponse httpResponse2 = sendGetRequest(replaceBraces(PrjConst.ORDER_URL,
-                            PrjConst.REGION_ID_THE_FORGE), paramMap2);
-                    int status2 = httpResponse2.getStatus();
-                    if (status2 != 200) {
-                        cnt2++;
-                        continue;
-                    }
-                    ret.addAll(JSON.parseArray(httpResponse2.body(), EveOrder.class));
-                    break;
-                }
-            }
-            break;
-        }
-        return ret;
     }
 
     private void queryJitaOrderInfoTT(Map<Integer, OrderParseResult> orderResult) {
@@ -277,50 +231,14 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         }
     }
 
-    private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result, int hopeProfit,
-                                                double hopeMargin, Map<Integer, Items> itemMap) throws IOException {
-        filterItemAndGetDailyVolumn(result, hopeProfit, hopeMargin);
-        computeFilterProfit(result, hopeProfit, hopeMargin, itemMap);
-    }
-
-    private void computeFilterProfit(Map<Integer, OrderParseResult> result, int hopeProfit,
-                                     double hopeMargin, Map<Integer, Items> itemMap) {
-        Iterator<Integer> iter = result.keySet().iterator();
-        while(iter.hasNext()) {
-            Integer id = iter.next();
-
-            System.out.println("线程:" + Thread.currentThread().getName() + "id:" + id + " 正在计算利润和购买量");
-
-            OrderParseResult parseResult = result.get(id);
-            Items items = itemMap.get(id);
-            if(items == null) {
-                continue;
-            }
-            parseResult.newComputerProfit(items.getVolume());
-//            parseResult.computerProfit();
-            //TODO 只拿到了自己当前的垄断，无法获得有购买记录而无卖单的垄断单
-            if(parseResult.isMonopoly()) {
-                parseResult.predictMonoPurchaseCount();
-                if(parseResult.getRecommendedCount() < 1) {
-                    iter.remove();
-                }
-            } else {
-                if(parseResult.getStatisticData().getProfit() < hopeProfit && parseResult.getStatisticData().getProfitMargin() < hopeMargin) {
-                    iter.remove();
-                    continue;
-                }
-                parseResult.predictPurchaseCount();
-                if (parseResult.getRecommendedCount() <= 0) {
-                    iter.remove();
-                }
-            }
-        }
-    }
-
-    private void filterItemAndGetDailyVolumn(Map<Integer, OrderParseResult> result, int hopeProfit, double hopeMargin) {
+    private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result,
+                                                int flowFilter, double hopeRoi, Map<Integer, Items> itemMap) throws IOException {
         Iterator<Integer> iter = result.keySet().iterator();
         while (iter.hasNext()) {
             Integer typeID = iter.next();
+            if(typeID == 33844) {
+                System.out.println(typeID);
+            }
             System.out.println("线程:" + Thread.currentThread().getName() + " 正在初步过滤id:" + typeID);
             OrderParseResult orderParseResult = result.get(typeID);
             String jitaSellMin = orderParseResult.getEveMarketData().getSell().getMin();
@@ -328,17 +246,34 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
                     Double.parseDouble(orderParseResult.getEveMarketData().getSell().getMin());
             double orderMin = orderParseResult.getMinPrice();
             double profit = orderMin - min;
-            double margin = profit/min;
-            if(profit < hopeProfit && margin < hopeMargin) {
+            if(profit < 0) {
                 iter.remove();
                 continue;
             }
             double dailyVolume = getDailyVolume(typeID);
-            if(dailyVolume < FILTER_LOW_FLOW) {
+            if(dailyVolume < flowFilter) {
                 iter.remove();
                 continue;
             }
             orderParseResult.setDailySalesVolume(dailyVolume);
+
+            Items items = itemMap.get(typeID);
+            if(items == null) {
+                iter.remove();
+                continue;
+            }
+            orderParseResult.setItem(items);
+            orderParseResult.computerProfit();
+            if(orderParseResult.getStatisticData().getProfitMargin() < hopeRoi) {
+                iter.remove();
+                continue;
+            }
+            orderParseResult.predictPurchaseCount();
+            if (orderParseResult.getRecommendedCount() <= 0) {
+                iter.remove();
+                continue;
+            }
+            orderParseResult.computeTotalProfit();
         }
     }
 
@@ -349,7 +284,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             paramMap.put("datasource", PrjConst.DATASOURCE);
             paramMap.put("type_id", typeID);
             HttpResponse httpResponse =
-                    sendGetRequest(replaceBraces(PrjConst.ORDER_HISTORY_URL,
+                    TradeUtil.sendGetRequest(TradeUtil.replaceBraces(PrjConst.ORDER_HISTORY_URL,
                             PrjConst.REGION_ID_OASA), paramMap);
             int status = httpResponse.getStatus();
             if(status != 200) {
@@ -373,15 +308,5 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         return 0;
     }
 
-    private HttpResponse sendGetRequest(String url, Map<String, Object> paramMap) {
-        return HttpRequest.get(url).form(paramMap).execute();
-    }
 
-    private String replaceBraces(String url, String replace) {
-        StringBuilder sb = new StringBuilder(url);
-        int i1 = sb.indexOf("{");
-        int i2 = sb.indexOf("}") + 1;
-        StringBuilder newSb = sb.replace(i1, i2, replace);
-        return newSb.toString();
-    }
 }

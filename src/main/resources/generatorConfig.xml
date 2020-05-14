@@ -55,10 +55,11 @@
         </javaClientGenerator>
 
 <!--        <table schema="sde" tableName="items"/>-->
-        <table schema="sde" tableName="industry_activities"/>
-        <table schema="sde" tableName="industry_activity_materials"/>
-        <table schema="sde" tableName="industry_activity_products"/>
-        <table schema="sde" tableName="industry_activity_skills"/>
-        <table schema="sde" tableName="industry_blueprints"/>
+<!--        <table schema="sde" tableName="industry_activities"/>-->
+<!--        <table schema="sde" tableName="industry_activity_materials"/>-->
+<!--        <table schema="sde" tableName="industry_activity_products"/>-->
+<!--        <table schema="sde" tableName="industry_activity_skills"/>-->
+<!--        <table schema="sde" tableName="industry_blueprints"/>-->
+        <table schema="sde" tableName="marketgroups"/>
     </context>
 </generatorConfiguration>

@@ -8,4 +8,5 @@ import java.io.Serializable;
 public class StatisticData implements Serializable {
     private int profit;
     private double profitMargin;
+    private int totalProfit;
 }

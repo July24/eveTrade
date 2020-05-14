@@ -9,11 +9,14 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
+import com.eve.dao.IndustryActivityProductsMapper;
 import com.eve.dao.ItemsMapper;
+import com.eve.dao.MarketgroupsMapper;
 import com.eve.entity.*;
-import com.eve.entity.database.Items;
-import com.eve.entity.database.ItemsExample;
+import com.eve.entity.database.*;
+import com.eve.util.DBConst;
 import com.eve.util.PrjConst;
+import com.eve.util.TradeUtil;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.ibatis.io.Resources;
@@ -22,6 +25,7 @@ import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 
 import java.io.*;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
 
@@ -31,7 +35,7 @@ public class BusinessService extends ServiceBase {
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
         AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
                 PrjConst.LEAH_REFRESH_TOKEN);
-        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO, 1000000, 1);
+        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO, 3, 0.1, true);
 //        bs.getChangeItemList(account);
 //        bs.getRfRelistItem(account);
 
@@ -47,11 +51,15 @@ public class BusinessService extends ServiceBase {
 
     private void outRelist(List<Items> items) throws IOException {
         File file = new File("result/trade/InventoryRelist");
+        DecimalFormat df = new DecimalFormat( "#,###.00");
         FileWriter writer = new FileWriter(file);
         Iterator<Items> iter = items.iterator();
         while (iter.hasNext()) {
-            Items id = iter.next();
-            writer.write(id.getEnName());
+            Items item = iter.next();
+            writer.write(item.getEnName());
+            writer.write("\t");
+            String format = df.format(getJitaSellPrice(item.getId()));
+            writer.write(format);
             writer.write("\r\n");
         }
         writer.flush();
@@ -102,12 +110,34 @@ public class BusinessService extends ServiceBase {
     private void outChangeList(List<Items> changeList) throws Exception {
         File file = new File("result/trade/changeList");
         FileWriter writer = new FileWriter(file);
+        DecimalFormat df = new DecimalFormat( "#,###.00");
         for(Items item : changeList) {
             writer.write(item.getEnName());
+            writer.write("\t");
+            String format = df.format(getJitaSellPrice(item.getId()));
+            writer.write(format);
             writer.write("\r\n");
         }
         writer.flush();
         writer.close();
+    }
+
+    private double getJitaSellPrice(Integer id) {
+        List<EveOrder> regionSellOrder = TradeUtil.getRegionOrder(id, PrjConst.REGION_ID_THE_FORGE);
+        double min = Integer.MAX_VALUE;
+        for(EveOrder order : regionSellOrder) {
+            if(!PrjConst.STATION_ID_JITA_NAVY4.equals(order.getLocationId())) {
+                continue;
+            }
+            if(order.isBuyOrder()) {
+                continue;
+            }
+            Double orderPrice = Double.valueOf(order.getPrice());
+            if(orderPrice < min) {
+                min = orderPrice;
+            }
+        }
+        return min;
     }
 
     private List<Items> getChangeList(Map<Integer, List<EveOrder>> myOrder, Map<Integer, List<EveOrder>> orderMap) throws Exception {
@@ -178,10 +208,12 @@ public class BusinessService extends ServiceBase {
     }
 
     public void parseStationMarket(AuthAccount account, AuthAccount jitaAccount, String stationID,
-                                   int hopeProfit, double hopeMargin) throws Exception {
+                                   int flowFilter, double hopeRoi, boolean onLackBPSearch) throws Exception {
         Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
+
 //        List<EveOrder> orderList = orderMap.get(40362);
 //        orderMap = pageOrderMap(orderMap, 1000, 2000);
+
         HashMap<Integer, Items> itemMap = getItemMap();
         HashMap<Integer, Integer> jitaInventory = getWarehouseMap(jitaAccount, PrjConst.STATION_ID_JITA_NAVY4);
         HashMap<Integer, Integer> rfInventory = getWarehouseMap(account, PrjConst.STATION_ID_RF_WINTERCO);
@@ -189,10 +221,104 @@ public class BusinessService extends ServiceBase {
 
         ForkJoinPool pool = new ForkJoinPool();
         ParseMarketTask task = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, orderMap, itemMap,
-                hopeProfit, hopeMargin);
+                flowFilter, hopeRoi);
         pool.invoke(task);
         Map<Integer, OrderParseResult> result = task.join();
-        outRecommendedSimple(result, itemMap);
+        System.out.println("输出推荐购买货物");
+        outRecommendedSimple(result);
+        if(onLackBPSearch) {
+            System.out.println("输出推荐购买蓝图");
+            outLackBlueprint(result.keySet(), itemMap);
+        }
+    }
+
+    private void outLackBlueprint(Set<Integer> keySet, HashMap<Integer, Items> itemMap) throws Exception {
+        System.out.println("得到拥有蓝图");
+        List<Integer> ownBpID = getOwnBlueprint();
+        System.out.println("得到缺少蓝图");
+        List<Integer> needBpIDList = getNeedBpIDList(ownBpID, keySet);
+
+        System.out.println("输出缺少蓝图");
+        File file = new File("result/trade/lackBlueprint");
+        FileWriter writer = new FileWriter(file);
+
+        for(Integer id : needBpIDList) {
+            Items items = itemMap.get(id);
+            if(items == null) {
+                continue;
+            }
+            writer.write(items.getEnName());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private List<Integer> getNeedBpIDList(List<Integer> ownBpID, Set<Integer> keySet) {
+        List<Integer> ret = new ArrayList<>();
+        IndustryActivityProductsMapper productsMapper = getIndustryActivityProductsMapper();
+        IndustryActivityProductsExample example = new IndustryActivityProductsExample();
+        example.createCriteria().andProducttypeidIn(new ArrayList<>(keySet));
+        List<IndustryActivityProducts> activityProductsList = productsMapper.selectByExample(example);
+        for(IndustryActivityProducts products : activityProductsList) {
+            if(ownBpID.contains(products.getBlueprinttypeid())) {
+                continue;
+            }
+            ret.add(products.getBlueprinttypeid());
+        }
+        return ret;
+    }
+
+    private List<Integer> getOwnBlueprint() {
+        AuthAccount account = new AuthAccount(PrjConst.SANJI_CHAR_ID, PrjConst.SANJI_CHAR_NAME,
+                PrjConst.SANJI_REFRESH_TOKEN);
+        List<Integer> ret = new ArrayList<>();
+        List<CharBlueprint> bpList = new ArrayList<>();
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("datasource", PrjConst.DATASOURCE);
+        paramMap.put("page", 1);
+        paramMap.put("token", account.getAccessToken());
+        int cnt = 0;
+        while (cnt < 3) {
+            HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.GET_CHAR_BLUEPRINT_URL,
+                    account.getId()), paramMap);
+            int status = httpResponse.getStatus();
+            if(status != 200) {
+                cnt++;
+                continue;
+            }
+
+            String body = httpResponse.body();
+            bpList.addAll(JSON.parseArray(body, CharBlueprint.class));
+            long maxPage = Long.parseLong(httpResponse.header("x-pages"));
+            for (int i = 2; i <= maxPage; i ++) {
+                Map<String, Object> paramMap2 = new HashMap<>();
+                paramMap2.put("datasource", PrjConst.DATASOURCE);
+                paramMap2.put("page", 1);
+                paramMap2.put("token", account.getAccessToken());
+                int cnt2 = 0;
+                while (cnt2 < 3) {
+                    HttpResponse httpResponse2 = sendGetRequest(replaceBraces(PrjConst.GET_CHAR_BLUEPRINT_URL,
+                            account.getId()), paramMap);
+                    int status2 = httpResponse2.getStatus();
+                    if (status2 != 200) {
+                        cnt2++;
+                        continue;
+                    }
+                    bpList.addAll(JSON.parseArray(httpResponse2.body(), CharBlueprint.class));
+                    break;
+                }
+            }
+            break;
+        }
+        for (CharBlueprint blueprint : bpList) {
+            if(blueprint.getRuns() >= 0) {
+                continue;
+            }
+            ret.add(blueprint.getTypeId());
+        }
+
+        return ret;
     }
 
     private Map<Integer, List<EveOrder>> pageOrderMap(Map<Integer, List<EveOrder>> orderMap, int from, int to) throws Exception {
@@ -239,47 +365,34 @@ public class BusinessService extends ServiceBase {
         return map;
     }
 
-    private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result, int hopeProfit,
-                                                double hopeMargin, HashMap<Integer, Items> itemMap) throws IOException {
-        filterItemAndGetDailyVolumn(result, hopeProfit, hopeMargin);
-        computeFilterProfit(result, hopeProfit, hopeMargin, itemMap);
+    private List<Integer> getAmmuSubMarketType() {
+        List<Integer> idList = new ArrayList<>();
+        MarketgroupsMapper marketgroupsMapper = getMarketgroupsMapper();
+
+        MarketgroupsExample example = new MarketgroupsExample();
+        example.createCriteria().andMarketgroupidEqualTo(DBConst.MARKET_GROUP_ROOT_AMMUNITION_CHARGES);
+        List<Marketgroups> marketgroups = marketgroupsMapper.selectByExample(example);
+
+        return idList;
     }
 
-    private void outRecommendedSimple(Map<Integer, OrderParseResult> result, HashMap<Integer, Items> itemMap) throws IOException {
+    private void outRecommendedSimple(Map<Integer, OrderParseResult> result) throws IOException {
         File file = new File("result/trade/simple");
-        List<OrderParseResult> monopoly = new ArrayList<>();
         FileWriter writer = new FileWriter(file);
-        Iterator<Integer> iter = result.keySet().iterator();
-        while (iter.hasNext()) {
-            Integer id = iter.next();
+
+        List<Map.Entry<Integer,OrderParseResult>> list = new ArrayList<>(result.entrySet());
+        Collections.sort(list, new Comparator<Map.Entry<Integer, OrderParseResult>>() {
+            @Override
+            public int compare(Map.Entry<Integer, OrderParseResult> o1, Map.Entry<Integer, OrderParseResult> o2) {
+                return o2.getValue().getStatisticData().getTotalProfit() - o1.getValue().getStatisticData().getTotalProfit();
+            }
+        });
+        for (Map.Entry<Integer,OrderParseResult> item : list) {
+            Integer id = item.getKey();
             OrderParseResult orderParseResult = result.get(id);
-            if(orderParseResult.isMonopoly()) {
-                monopoly.add(orderParseResult);
-                continue;
-            }
-            Items items = itemMap.get(id);
-            if(items == null) {
-                continue;
-            }
-            String record = getPurchaseRecord(orderParseResult, items.getEnName());
+            String record = getPurchaseRecord(orderParseResult, orderParseResult.getItem().getEnName());
             writer.write(record);
             writer.write("\r\n");
-        }
-        if(monopoly.size() > 0) {
-            writer.write("-----------------------------------");
-            writer.write("\r\n");
-            writer.write("--------------monopoly-------------");
-            writer.write("\r\n");
-            writer.write("-----------------------------------");
-            writer.write("\r\n");
-            for (OrderParseResult mono : monopoly) {
-                Items items = itemMap.get(mono.getTypeID());
-                if(items == null) {
-                    continue;
-                }
-                writer.write(getPurchaseRecord(mono, items.getEnName()));
-                writer.write("\r\n");
-            }
         }
         writer.flush();
         writer.close();
@@ -342,36 +455,6 @@ public class BusinessService extends ServiceBase {
             }
         }
         return sum/7;
-    }
-
-    private void computeFilterProfit(Map<Integer, OrderParseResult> result, int hopeProfit,
-                                     double hopeMargin, HashMap<Integer, Items> itemMap) {
-        Iterator<Integer> iter = result.keySet().iterator();
-        while(iter.hasNext()) {
-            Integer id = iter.next();
-
-            System.out.println("id:" + id + " 正在计算利润和购买量");
-
-            OrderParseResult parseResult = result.get(id);
-            parseResult.newComputerProfit(itemMap.get(id).getVolume());
-//            parseResult.computerProfit();
-            //TODO 只拿到了自己当前的垄断，无法获得有购买记录而无卖单的垄断单
-            if(parseResult.isMonopoly()) {
-                parseResult.predictMonoPurchaseCount();
-                if(parseResult.getRecommendedCount() < 1) {
-                    iter.remove();
-                }
-            } else {
-                if(parseResult.getStatisticData().getProfit() < hopeProfit && parseResult.getStatisticData().getProfitMargin() < hopeMargin) {
-                    iter.remove();
-                    continue;
-                }
-                parseResult.predictPurchaseCount();
-                if (parseResult.getRecommendedCount() <= 0) {
-                    iter.remove();
-                }
-            }
-        }
     }
 
     private void importInventory(Map<Integer, OrderParseResult> result, String orderListPath,

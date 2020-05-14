@@ -111,4 +111,8 @@ public class ServiceBase {
     protected IndustryBlueprintsMapper getIndustryBlueprintsMapper() {
         return sqlSession.getMapper(IndustryBlueprintsMapper.class);
     }
+
+    protected MarketgroupsMapper getMarketgroupsMapper() {
+        return sqlSession.getMapper(MarketgroupsMapper.class);
+    }
 }
