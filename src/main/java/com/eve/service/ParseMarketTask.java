@@ -236,9 +236,6 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         Iterator<Integer> iter = result.keySet().iterator();
         while (iter.hasNext()) {
             Integer typeID = iter.next();
-            if(typeID == 33844) {
-                System.out.println(typeID);
-            }
             System.out.println("线程:" + Thread.currentThread().getName() + " 正在初步过滤id:" + typeID);
             OrderParseResult orderParseResult = result.get(typeID);
             String jitaSellMin = orderParseResult.getEveMarketData().getSell().getMin();

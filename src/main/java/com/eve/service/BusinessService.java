@@ -17,6 +17,7 @@ import com.eve.entity.database.*;
 import com.eve.util.DBConst;
 import com.eve.util.PrjConst;
 import com.eve.util.TradeUtil;
+import io.swagger.models.auth.In;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.apache.ibatis.io.Resources;
@@ -35,7 +36,8 @@ public class BusinessService extends ServiceBase {
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
         AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
                 PrjConst.LEAH_REFRESH_TOKEN);
-        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO, 3, 0.1, true);
+        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
+                3, 0.1, true);
 //        bs.getChangeItemList(account);
 //        bs.getRfRelistItem(account);
 
@@ -224,19 +226,51 @@ public class BusinessService extends ServiceBase {
                 flowFilter, hopeRoi);
         pool.invoke(task);
         Map<Integer, OrderParseResult> result = task.join();
+
+        System.out.println("得到拥有蓝图");
+        List<CharBlueprint> ownBpID = getOwnBlueprint();
+        List<Integer> fullIDList = getFullResearchIDList(ownBpID);
+        List<Integer> manuTypeIDList =  getCanManuTypeID(fullIDList);
         System.out.println("输出推荐购买货物");
-        outRecommendedSimple(result);
+        outRecommendedSimple(result, manuTypeIDList);
         if(onLackBPSearch) {
             System.out.println("输出推荐购买蓝图");
-            outLackBlueprint(result.keySet(), itemMap);
+            outLackBlueprint(ownBpID, result.keySet(), itemMap);
         }
     }
 
-    private void outLackBlueprint(Set<Integer> keySet, HashMap<Integer, Items> itemMap) throws Exception {
-        System.out.println("得到拥有蓝图");
-        List<Integer> ownBpID = getOwnBlueprint();
+    private List<Integer> getCanManuTypeID(List<Integer> fullIDList) {
+        IndustryActivityProductsMapper productMapper = getIndustryActivityProductsMapper();
+        IndustryActivityProductsExample example = new IndustryActivityProductsExample();
+        example.createCriteria().andBlueprinttypeidIn(fullIDList).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING);
+        List<IndustryActivityProducts> industryActivityProductsList = productMapper.selectByExample(example);
+        List<Integer> ret = new ArrayList<>();
+        for(IndustryActivityProducts products : industryActivityProductsList) {
+            ret.add(products.getProducttypeid());
+        }
+        return ret;
+    }
+
+    private List<Integer> getFullResearchIDList(List<CharBlueprint> ownBpID) {
+        List<Integer> ret = new ArrayList<>();
+        for(CharBlueprint bp : ownBpID) {
+            if(bp.getTimeEfficiency() >= 20 && bp.getMaterialEfficiency() >= 10) {
+                ret.add(bp.getTypeId());
+            }
+        }
+        return ret;
+    }
+
+    private void outLackBlueprint(List<CharBlueprint> ownBpID, Set<Integer> keySet, HashMap<Integer, Items> itemMap) throws Exception {
+        List<Integer> BPOIDList = new ArrayList<>();
+        for(CharBlueprint blueprint : ownBpID) {
+            if(blueprint.getRuns() >= 0) {
+                continue;
+            }
+            BPOIDList.add(blueprint.getTypeId());
+        }
         System.out.println("得到缺少蓝图");
-        List<Integer> needBpIDList = getNeedBpIDList(ownBpID, keySet);
+        List<Integer> needBpIDList = getNeedBpIDList(BPOIDList, keySet);
 
         System.out.println("输出缺少蓝图");
         File file = new File("result/trade/lackBlueprint");
@@ -269,10 +303,9 @@ public class BusinessService extends ServiceBase {
         return ret;
     }
 
-    private List<Integer> getOwnBlueprint() {
+    private List<CharBlueprint> getOwnBlueprint() {
         AuthAccount account = new AuthAccount(PrjConst.SANJI_CHAR_ID, PrjConst.SANJI_CHAR_NAME,
                 PrjConst.SANJI_REFRESH_TOKEN);
-        List<Integer> ret = new ArrayList<>();
         List<CharBlueprint> bpList = new ArrayList<>();
         Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("datasource", PrjConst.DATASOURCE);
@@ -311,14 +344,9 @@ public class BusinessService extends ServiceBase {
             }
             break;
         }
-        for (CharBlueprint blueprint : bpList) {
-            if(blueprint.getRuns() >= 0) {
-                continue;
-            }
-            ret.add(blueprint.getTypeId());
-        }
 
-        return ret;
+
+        return bpList;
     }
 
     private Map<Integer, List<EveOrder>> pageOrderMap(Map<Integer, List<EveOrder>> orderMap, int from, int to) throws Exception {
@@ -376,7 +404,7 @@ public class BusinessService extends ServiceBase {
         return idList;
     }
 
-    private void outRecommendedSimple(Map<Integer, OrderParseResult> result) throws IOException {
+    private void outRecommendedSimple(Map<Integer, OrderParseResult> result, List<Integer> manuTypeIDList) throws IOException {
         File file = new File("result/trade/simple");
         FileWriter writer = new FileWriter(file);
 
@@ -387,9 +415,23 @@ public class BusinessService extends ServiceBase {
                 return o2.getValue().getStatisticData().getTotalProfit() - o1.getValue().getStatisticData().getTotalProfit();
             }
         });
+
+        List<Map.Entry<Integer,OrderParseResult>> bpManuList = new ArrayList<>();
         for (Map.Entry<Integer,OrderParseResult> item : list) {
             Integer id = item.getKey();
-            OrderParseResult orderParseResult = result.get(id);
+            if(manuTypeIDList.contains(id)) {
+                bpManuList.add(item);
+                continue;
+            }
+            OrderParseResult orderParseResult = item.getValue();
+            String record = getPurchaseRecord(orderParseResult, orderParseResult.getItem().getEnName());
+            writer.write(record);
+            writer.write("\r\n");
+        }
+        writer.write("===============manufacturing==============");
+        writer.write("\r\n");
+        for (Map.Entry<Integer,OrderParseResult> item : bpManuList) {
+            OrderParseResult orderParseResult = item.getValue();
             String record = getPurchaseRecord(orderParseResult, orderParseResult.getItem().getEnName());
             writer.write(record);
             writer.write("\r\n");
