@@ -36,16 +36,23 @@ public class BusinessService extends ServiceBase {
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
         AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
                 PrjConst.LEAH_REFRESH_TOKEN);
-        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
-                3, 0.1, true);
+//        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
+//                3, 0.1, true);
 //        bs.getChangeItemList(account);
-//        bs.getRfRelistItem(account);
+
+        List<Integer> exclude = new ArrayList<>();
+        exclude.add(601);
+        exclude.add(648);
+        exclude.add(649);
+        exclude.add(16242);
+        bs.getRfRelistItem(account, exclude);
 
     }
 
-    public void getRfRelistItem(AuthAccount account) throws Exception {
+    public void getRfRelistItem(AuthAccount account, List<Integer> exclude) throws Exception {
         List<AssertItem> anAssert = getAssert(account);
-        List<AssertItem> rfAssert = filterRFAssert(anAssert, PrjConst.STATION_ID_RF_WINTERCO);
+        List<AssertItem> rfAssert = filterRFAssert(anAssert, exclude,
+                PrjConst.STATION_ID_RF_WINTERCO);
         Set<Integer> orderIDs = getMyOrder(account).keySet();
         List<Items> notList = getNotList(rfAssert, orderIDs);
         outRelist(notList);
@@ -75,16 +82,19 @@ public class BusinessService extends ServiceBase {
                 ids.add(item.getTypeId());
             }
         }
+        if(ids.size() == 0) {
+            return new ArrayList<>();
+        }
         ItemsMapper itemsMapper = getItemsMapper();
         ItemsExample example = new ItemsExample();
         example.createCriteria().andIdIn(ids);
         return itemsMapper.selectByExample(example);
     }
 
-    private List<AssertItem> filterRFAssert(List<AssertItem> anAssert, String locationID) {
+    private List<AssertItem> filterRFAssert(List<AssertItem> anAssert, List<Integer> exclude, String locationID) {
         List<AssertItem> ret = new ArrayList<>();
         for(AssertItem item : anAssert) {
-            if(Long.parseLong(locationID) == item.getLocationId()) {
+            if(Long.parseLong(locationID) == item.getLocationId() && !exclude.contains(item.getTypeId())) {
                 ret.add(item);
             }
         }
