@@ -132,7 +132,7 @@ public class IndustryService extends ServiceBase {
                 if(!order.getLocationId().equals(PrjConst.STATION_ID_RF_WINTERCO)) {
                     continue;
                 }
-                double price = Double.parseDouble(order.getPrice());
+                double price = order.getPrice();
                 if(price < stationPrice) {
                     stationPrice = price;
                 }

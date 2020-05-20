@@ -39,13 +39,14 @@ public class BusinessService extends ServiceBase {
 //        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
 //                3, 0.1, true);
 //        bs.getChangeItemList(account);
+        bs.getJitaBuyChangeItemList(jitaAccount);
 
         List<Integer> exclude = new ArrayList<>();
         exclude.add(601);
         exclude.add(648);
         exclude.add(649);
         exclude.add(16242);
-        bs.getRfRelistItem(account, exclude);
+//        bs.getRfRelistItem(account, exclude);
 
     }
 
@@ -119,6 +120,99 @@ public class BusinessService extends ServiceBase {
         outChangeList(changeList);
     }
 
+    public void getJitaBuyChangeItemList(AuthAccount account) throws Exception {
+        Map<Integer, List<EveOrder>> myOrder = getMyOrder(account);
+        List<Items> changeList = getJitaChangeList(myOrder);
+        outJitaNotHighBuyList(changeList);
+    }
+
+    private void outJitaNotHighBuyList(List<Items> changeList) throws Exception {
+        File file = new File("result/trade/jitaBuyNotHigh");
+        FileWriter writer = new FileWriter(file);
+        for(Items item : changeList) {
+            writer.write(item.getEnName());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private List<Items> getJitaChangeList(Map<Integer, List<EveOrder>> myOrder) {
+        List<Integer> idList = new ArrayList<>();
+        Iterator<Integer> iter = myOrder.keySet().iterator();
+        while(iter.hasNext()) {
+            Integer id = iter.next();
+            List<EveOrder> orderList = myOrder.get(id);
+            double high = getHighestBuySell(orderList);
+            if(high < 0) {
+                continue;
+            }
+            double jitaHigh = getJitaBuyHighPrice(id);
+            if(jitaHigh > high) {
+                idList.add(id);
+            }
+        }
+        ItemsMapper itemsMapper = getItemsMapper();
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andIdIn(idList);
+        return itemsMapper.selectByExample(example);
+    }
+
+    private double getJitaBuyHighPrice(Integer id) {
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("datasource", PrjConst.DATASOURCE);
+        paramMap.put("page", 1);
+        paramMap.put("type_id", id);
+        paramMap.put("order_type ", "buy");
+        HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.LIST_REGION_ORDER_URL,
+                PrjConst.REGION_ID_THE_FORGE), paramMap);
+        String body = httpResponse.body();
+        List<EveOrder> eveOrders = JSON.parseArray(body, EveOrder.class);
+        int size = Integer.parseInt(httpResponse.header("x-pages"));
+        for(int i = 2; i <= size; i++) {
+            Map<String, Object> paramMap2 = new HashMap<>();
+            paramMap2.put("datasource", PrjConst.DATASOURCE);
+            paramMap2.put("page", i);
+            paramMap2.put("type_id", id);
+            paramMap2.put("order_type ", "buy");
+            String body2 =
+                    sendGetRequest(replaceBraces(PrjConst.LIST_REGION_ORDER_URL,
+                            PrjConst.REGION_ID_THE_FORGE), paramMap2).body();
+            if(body2.contains("error")) {
+                i--;
+                continue;
+            }
+            List<EveOrder> eveOrders2 = JSON.parseArray(body2, EveOrder.class);
+            eveOrders.addAll(eveOrders2);
+        }
+        double buyHighest = 0;
+        for(EveOrder order : eveOrders) {
+            if(!order.isBuyOrder()) {
+                continue;
+            }
+            if(!order.getLocationId().equals(PrjConst.STATION_ID_JITA_NAVY4)) {
+                continue;
+            }
+            if(buyHighest < order.getPrice()) {
+                buyHighest = order.getPrice();
+            }
+        }
+        return buyHighest;
+    }
+
+    private double getHighestBuySell(List<EveOrder> orderList) {
+        double high = -1;
+        for(EveOrder order : orderList) {
+            if(!order.isBuyOrder()) {
+                continue;
+            }
+            if(high < order.getPrice()) {
+                high = order.getPrice();
+            }
+        }
+        return high;
+    }
+
     private void outChangeList(List<Items> changeList) throws Exception {
         File file = new File("result/trade/changeList");
         FileWriter writer = new FileWriter(file);
@@ -182,13 +276,13 @@ public class BusinessService extends ServiceBase {
         while (iter.hasNext()) {
             Integer id = iter.next();
             List<EveOrder> orderList = myOrder.get(id);
-            double lowest = Double.parseDouble(orderList.get(0).getPrice());
+            double lowest = (orderList.get(0).getPrice());
             for(int i = 1; i < orderList.size(); i++) {
                 EveOrder order = orderList.get(i);
                 if(order.isBuyOrder()) {
                     continue;
                 }
-                double price = Double.parseDouble((order.getPrice()));
+                double price = ((order.getPrice()));
                 if(price < lowest) {
                     lowest = price;
                 }

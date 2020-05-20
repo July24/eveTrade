@@ -13,6 +13,7 @@ public class PrjConst {
     public static final String CHAR_ORDER_URL = "https://esi.evetech.net/latest/characters/{character_id}/orders/";
     public static final String CHAR_ASSERT_URL = "https://esi.evetech.net/latest/characters/{character_id}/assets/";
     public static final String LIST_STRUCTURE_ORDER_URL = "https://esi.evetech.net/latest/markets/structures/{structure_id}/";
+    public static final String LIST_REGION_ORDER_URL = "https://esi.evetech.net/latest/markets/{region_id}/orders/";
     public static final String GET_CHAR_BLUEPRINT_URL = "https://esi.evetech.net/latest/characters/{character_id" +
             "}/blueprints/";
 
