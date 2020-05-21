@@ -5,7 +5,6 @@ import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.NumberUtil;
-import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
@@ -18,44 +17,24 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.RecursiveTask;
 
-public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult>> {
+public class ParseOutputMarketTask extends RecursiveTask<Map<Integer, OrderParseResult>> {
     int THRESHOLD = 30;
-    Map<Integer, Integer> selfOrderMap;
-    Map<Integer, Integer> jitaInventory;
-    Map<Integer, Integer> rfInventory;
     Map<Integer, List<EveOrder>> orderMap;
     Map<Integer, Items> itemMap;
-    double hopeRoi;
-    int flowFilter;
 
-    public ParseMarketTask(Map<Integer, Integer> selfOrderMap, Map<Integer, Integer> jitaInventory, Map<Integer,
-            Integer> rfInventory, Map<Integer, List<EveOrder>> orderMap, Map<Integer, Items> itemMap,
-                           int flowFilter, double hopeRoi) {
-        this.selfOrderMap = selfOrderMap;
-        this.jitaInventory = jitaInventory;
-        this.rfInventory = rfInventory;
+    public ParseOutputMarketTask(Map<Integer, List<EveOrder>> orderMap, Map<Integer, Items> itemMap) {
         this.orderMap = orderMap;
         this.itemMap = itemMap;
-        this.flowFilter = flowFilter;
-        this.hopeRoi = hopeRoi;
     }
 
     @Override
     protected Map<Integer, OrderParseResult> compute() {
         if (orderMap.size() <= THRESHOLD) {
-            // 直接求和
             Map<Integer, OrderParseResult> result = new HashMap<>();
             inputRfOrder(result, orderMap);
-//            System.out.println("导入RF订单完毕");
-//            queryJitaOrderInfoTT(result);
-            // TODO esi中获取数据
             queryJitaOrderInfoFromEsi(result);
-//            System.out.println("导入Jita订单完毕");
-//            System.out.println("getItemMap完毕");
-            importInventory(result, selfOrderMap, jitaInventory, rfInventory);//todo 传入订单/库存
-//            System.out.println("importInventory完毕");
             try {
-                getRecommendedPurchaseQuantity(result, flowFilter, hopeRoi, itemMap);
+                getRecommendedPurchaseQuantity(result);
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -64,10 +43,8 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             HashMap<Integer, List<EveOrder>> leftMap = new HashMap<>();
             HashMap<Integer, List<EveOrder>> rightMap = new HashMap<>();
             splitMap(leftMap, rightMap);
-            ParseMarketTask left = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, leftMap, itemMap,
-                    flowFilter, hopeRoi);
-            ParseMarketTask right = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, rightMap, itemMap,
-                    flowFilter, hopeRoi);
+            ParseOutputMarketTask left = new ParseOutputMarketTask(leftMap, itemMap);
+            ParseOutputMarketTask right = new ParseOutputMarketTask(rightMap, itemMap);
             invokeAll(left, right);
             Map<Integer, OrderParseResult> merge = left.join();
             merge.putAll(right.join());
@@ -146,34 +123,46 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         while (iter.hasNext()) {
             Integer id = iter.next();
             OrderParseResult orderParseResult = map.get(id);
-            orderParseResult.setEveMarketData(getJitaSellOrder(id));
+            orderParseResult.setEveMarketData(getJitaOrderData(id));
         }
     }
 
-    private EveMarketData getJitaSellOrder(Integer id) {
+    private EveMarketData getJitaOrderData(Integer id) {
         List<EveOrder> regionSellOrder = TradeUtil.getRegionOrder(id, PrjConst.REGION_ID_THE_FORGE);
         double min = Integer.MAX_VALUE;
+        double max = -1;
         for(EveOrder order : regionSellOrder) {
             if(!PrjConst.STATION_ID_JITA_NAVY4.equals(order.getLocationId())) {
                 continue;
             }
             if(order.isBuyOrder()) {
-                continue;
-            }
-            Double orderPrice = Double.valueOf(order.getPrice());
-            if(orderPrice < min) {
-                min = orderPrice;
+                double orderPrice = order.getPrice();
+                if(orderPrice > max) {
+                    max = orderPrice;
+                }
+            } else {
+                double orderPrice = order.getPrice();
+                if(orderPrice < min) {
+                    min = orderPrice;
+                }
             }
         }
         EveMarketData data = new EveMarketData();
-        EveMarketSellOrder eveMarketSellOrder = new EveMarketSellOrder();
         EveMarketForQuery forQuery = new EveMarketForQuery();
         List<String> types = new ArrayList<>();
         types.add(String.valueOf(id));
         forQuery.setTypes(types);
+
+        EveMarketSellOrder eveMarketSellOrder = new EveMarketSellOrder();
         eveMarketSellOrder.setForQuery(forQuery);
         eveMarketSellOrder.setMin(min);
+
+        EveMarketBuyOrder eveMarketBuyOrder = new EveMarketBuyOrder();
+        eveMarketBuyOrder.setForQuery(forQuery);
+        eveMarketBuyOrder.setMax(max);
+
         data.setSell(eveMarketSellOrder);
+        data.setBuy(eveMarketBuyOrder);
         return data;
     }
 
@@ -231,79 +220,37 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         }
     }
 
-    private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result,
-                                                int flowFilter, double hopeRoi, Map<Integer, Items> itemMap) throws IOException {
+    private void getRecommendedPurchaseQuantity(Map<Integer, OrderParseResult> result) throws IOException {
         Iterator<Integer> iter = result.keySet().iterator();
         while (iter.hasNext()) {
             Integer typeID = iter.next();
             System.out.println("线程:" + Thread.currentThread().getName() + " 正在初步过滤id:" + typeID);
             OrderParseResult orderParseResult = result.get(typeID);
-            double jitaSellMin = orderParseResult.getEveMarketData().getSell().getMin();
-            double min = jitaSellMin == 0 ? Long.MAX_VALUE :
-                    orderParseResult.getEveMarketData().getSell().getMin();
-            double orderMin = orderParseResult.getMinPrice();
-            double profit = orderMin - min;
-            if(profit < 0) {
-                iter.remove();
-                continue;
-            }
-            double dailyVolume = getDailyVolume(typeID);
-            if(dailyVolume < flowFilter) {
-                iter.remove();
-                continue;
-            }
-            orderParseResult.setDailySalesVolume(dailyVolume);
+            double sellMin = orderParseResult.getEveMarketData().getSell().getMin();
+            double buyMax = orderParseResult.getEveMarketData().getBuy().getMax();
+            double rfSell = orderParseResult.getMinPrice();
 
             Items items = itemMap.get(typeID);
             if(items == null) {
                 iter.remove();
                 continue;
             }
+
+            double expressFax = items.getVolume() * PrjConst.EXPRESS_FAX_CUBIC_METRES_RF_TO_JITA + PrjConst.EXPRESS_FAX_RF_TO_JITA_EXTRA * buyMax;
+
+//            double profitBySellOrder = sellMin - rfSell - expressFax;
+            double profitByBuyOrder = buyMax * (1 - PrjConst.SELL_FAX) - rfSell - expressFax;
+//
+//            if(profitBySellOrder < 0 && profitByBuyOrder < 0) {
+//                iter.remove();
+//                continue;
+//            }
+            if(profitByBuyOrder < 0) {
+                iter.remove();
+                continue;
+            }
             orderParseResult.setItem(items);
-            orderParseResult.computerProfit();
-            if(orderParseResult.getStatisticData().getProfitMargin() < hopeRoi) {
-                iter.remove();
-                continue;
-            }
-            orderParseResult.predictPurchaseCount();
-            if (orderParseResult.getRecommendedCount() <= 0) {
-                iter.remove();
-                continue;
-            }
-            orderParseResult.computeTotalProfit();
+            orderParseResult.setProfitByBuyOrder(profitByBuyOrder);
         }
     }
-
-    private double getDailyVolume(int typeID) {
-        int getCnt = 0;
-        while(getCnt < 3) {
-            Map<String, Object> paramMap = new HashMap<>();
-            paramMap.put("datasource", PrjConst.DATASOURCE);
-            paramMap.put("type_id", typeID);
-            HttpResponse httpResponse =
-                    TradeUtil.sendGetRequest(TradeUtil.replaceBraces(PrjConst.ORDER_HISTORY_URL,
-                            PrjConst.REGION_ID_OASA), paramMap);
-            int status = httpResponse.getStatus();
-            if(status != 200) {
-                getCnt++;
-                continue;
-            }
-            List<OrderHistory> orderHistories = JSON.parseArray(httpResponse.body(), OrderHistory.class);
-            int size = orderHistories.size();
-            Date endDate = new Date();
-            DateTime bgnDate = DateUtil.offsetDay(endDate, -8);
-            double sum = 0;
-            for(int i = size - 1; i >= 0; i--) {
-                OrderHistory orderHistory = orderHistories.get(i);
-                Date date = orderHistory.getDate();
-                if(date.before(endDate) && date.after(bgnDate)) {
-                    sum += orderHistory.getVolume();
-                }
-            }
-            return sum/7;
-        }
-        return 0;
-    }
-
-
 }

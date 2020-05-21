@@ -14,8 +14,8 @@ public class EveMarketSellOrder implements Serializable {
     private String stdDev;
     private String median;
     private String fivePercent;
-    private String max;
-    private String min;
+    private double max;
+    private double min;
     private String highToLow;
     private String generated;
 }

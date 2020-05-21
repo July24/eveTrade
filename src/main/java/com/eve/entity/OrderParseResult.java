@@ -22,6 +22,8 @@ public class OrderParseResult implements Serializable {
     int typeID;
     //可能为0
     double dailySalesVolume = 0.0;
+    //出口直接到吉他卖的利润
+    double profitByBuyOrder = 0.0;
     //可能为0
     int inventory = 0;
     Items item;
@@ -42,7 +44,7 @@ public class OrderParseResult implements Serializable {
         if(volRemain == 0) {
             return;
         }
-        double jitaSell = Double.parseDouble(eveMarketData.getSell().getMin());
+        double jitaSell = eveMarketData.getSell().getMin();
         if(jitaSell == 0) {
             return;
         }

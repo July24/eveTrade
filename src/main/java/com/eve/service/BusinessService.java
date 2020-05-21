@@ -39,7 +39,9 @@ public class BusinessService extends ServiceBase {
 //        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
 //                3, 0.1, true);
 //        bs.getChangeItemList(account);
-        bs.getJitaBuyChangeItemList(jitaAccount);
+//        bs.getJitaBuyChangeItemList(jitaAccount);
+
+        bs.parseStationExportMarket(account, PrjConst.STATION_ID_RF_WINTERCO);
 
         List<Integer> exclude = new ArrayList<>();
         exclude.add(601);
@@ -313,6 +315,52 @@ public class BusinessService extends ServiceBase {
         return ret;
     }
 
+    public void parseStationExportMarket(AuthAccount account, String stationID) throws Exception {
+        Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
+        HashMap<Integer, Items> itemMap = getItemMap();
+        ForkJoinPool pool = new ForkJoinPool();
+        ParseOutputMarketTask task = new ParseOutputMarketTask(orderMap, itemMap);
+        pool.invoke(task);
+        Map<Integer, OrderParseResult> result = task.join();
+        outExportSimple(result);
+    }
+
+    private void outExportSimple(Map<Integer, OrderParseResult> result) throws Exception {
+        File file = new File("result/trade/exportParse");
+        FileWriter writer = new FileWriter(file);
+
+        List<Map.Entry<Integer,OrderParseResult>> list = new ArrayList<>(result.entrySet());
+        Collections.sort(list, new Comparator<Map.Entry<Integer, OrderParseResult>>() {
+            @Override
+            public int compare(Map.Entry<Integer, OrderParseResult> o1, Map.Entry<Integer, OrderParseResult> o2) {
+                Double sub = NumberUtil.sub(o2.getValue().getProfitByBuyOrder(), o1.getValue().getProfitByBuyOrder());
+                return sub.intValue();
+            }
+        });
+        DecimalFormat df = new DecimalFormat( "#,###.00");
+        for (Map.Entry<Integer,OrderParseResult> item : list) {
+            Integer id = item.getKey();
+            OrderParseResult orderParseResult = item.getValue();
+            String record = getExportRecord(df, orderParseResult, orderParseResult.getItem().getEnName());
+            writer.write(record);
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private String getExportRecord(DecimalFormat df, OrderParseResult orderParseResult, String enName) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(enName);
+        sb.append("\t");
+        sb.append(df.format(orderParseResult.getMinPrice()));
+        sb.append("\t");
+        sb.append(df.format(orderParseResult.getEveMarketData().getSell().getMin()));
+        sb.append("\t");
+        sb.append(df.format(orderParseResult.getEveMarketData().getBuy().getMax()));
+        return sb.toString();
+    }
+
     public void parseStationMarket(AuthAccount account, AuthAccount jitaAccount, String stationID,
                                    int flowFilter, double hopeRoi, boolean onLackBPSearch) throws Exception {
         Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
@@ -567,9 +615,9 @@ public class BusinessService extends ServiceBase {
             Integer typeID = iter.next();
             System.out.println("正在初步过滤id:" + typeID);
             OrderParseResult orderParseResult = result.get(typeID);
-            String jitaSellMin = orderParseResult.getEveMarketData().getSell().getMin();
-            double min = jitaSellMin == null ? Long.MAX_VALUE :
-                    Double.parseDouble(orderParseResult.getEveMarketData().getSell().getMin());
+            double jitaSellMin = orderParseResult.getEveMarketData().getSell().getMin();
+            double min = jitaSellMin == 0 ? Long.MAX_VALUE :
+                    orderParseResult.getEveMarketData().getSell().getMin();
             double orderMin = orderParseResult.getMinPrice();
             double profit = orderMin - min;
             double margin = profit/min;
