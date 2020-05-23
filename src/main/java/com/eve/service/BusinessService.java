@@ -36,12 +36,12 @@ public class BusinessService extends ServiceBase {
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
         AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
                 PrjConst.LEAH_REFRESH_TOKEN);
-//        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
-//                3, 0.1, true);
+        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
+                3, 0.2, true);
 //        bs.getChangeItemList(account);
 //        bs.getJitaBuyChangeItemList(jitaAccount);
 
-        bs.parseStationExportMarket(account, PrjConst.STATION_ID_RF_WINTERCO);
+//        bs.parseStationExportMarket(account, PrjConst.STATION_ID_RF_WINTERCO);
 
         List<Integer> exclude = new ArrayList<>();
         exclude.add(601);
@@ -597,6 +597,10 @@ public class BusinessService extends ServiceBase {
         sb.append(enName);
         sb.append(" x");
         sb.append(orderParseResult.getRecommendedCount());
+        sb.append("\t");
+        sb.append(orderParseResult.getStatisticData().getProfit());
+        sb.append("\t");
+        sb.append(orderParseResult.getStatisticData().getProfitMargin());
         return sb.toString();
     }
 
