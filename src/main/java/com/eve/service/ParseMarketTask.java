@@ -153,16 +153,20 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
     private EveMarketData getJitaSellOrder(Integer id) {
         List<EveOrder> regionSellOrder = TradeUtil.getRegionOrder(id, PrjConst.REGION_ID_THE_FORGE);
         double min = Integer.MAX_VALUE;
+        double buyMax = -1;
         for(EveOrder order : regionSellOrder) {
-            if(!PrjConst.STATION_ID_JITA_NAVY4.equals(order.getLocationId())) {
-                continue;
-            }
+//            if(!PrjConst.STATION_ID_JITA_NAVY4.equals(order.getLocationId())) {
+//                continue;
+//            }
+            double orderPrice = order.getPrice();
             if(order.isBuyOrder()) {
-                continue;
-            }
-            Double orderPrice = Double.valueOf(order.getPrice());
-            if(orderPrice < min) {
-                min = orderPrice;
+                if(orderPrice > buyMax) {
+                    buyMax = orderPrice;
+                }
+            } else {
+                if(orderPrice < min) {
+                    min = orderPrice;
+                }
             }
         }
         EveMarketData data = new EveMarketData();
@@ -174,6 +178,11 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         eveMarketSellOrder.setForQuery(forQuery);
         eveMarketSellOrder.setMin(min);
         data.setSell(eveMarketSellOrder);
+
+        EveMarketBuyOrder eveMarketBuyOrder = new EveMarketBuyOrder();
+        eveMarketBuyOrder.setForQuery(forQuery);
+        eveMarketBuyOrder.setMax(buyMax);
+        data.setBuy(eveMarketBuyOrder);
         return data;
     }
 

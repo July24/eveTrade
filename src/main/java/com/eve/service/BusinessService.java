@@ -1,11 +1,11 @@
 package com.eve.service;
 
+import cn.hutool.Hutool;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.NumberUtil;
-import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
@@ -17,13 +17,8 @@ import com.eve.entity.database.*;
 import com.eve.util.DBConst;
 import com.eve.util.PrjConst;
 import com.eve.util.TradeUtil;
-import io.swagger.models.auth.In;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.ibatis.io.Resources;
-import org.apache.ibatis.session.SqlSession;
-import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 
 import java.io.*;
 import java.text.DecimalFormat;
@@ -39,7 +34,7 @@ public class BusinessService extends ServiceBase {
         bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
                 3, 0.2, true);
 //        bs.getChangeItemList(account);
-//        bs.getJitaBuyChangeItemList(jitaAccount);
+//        bs.getForgeBuyChangeItemList(jitaAccount);
 
 //        bs.parseStationExportMarket(account, PrjConst.STATION_ID_RF_WINTERCO);
 
@@ -122,9 +117,9 @@ public class BusinessService extends ServiceBase {
         outChangeList(changeList);
     }
 
-    public void getJitaBuyChangeItemList(AuthAccount account) throws Exception {
+    public void getForgeBuyChangeItemList(AuthAccount account) throws Exception {
         Map<Integer, List<EveOrder>> myOrder = getMyOrder(account);
-        List<Items> changeList = getJitaChangeList(myOrder);
+        List<Items> changeList = getForgeChangeList(myOrder);
         outJitaNotHighBuyList(changeList);
     }
 
@@ -139,7 +134,7 @@ public class BusinessService extends ServiceBase {
         writer.close();
     }
 
-    private List<Items> getJitaChangeList(Map<Integer, List<EveOrder>> myOrder) {
+    private List<Items> getForgeChangeList(Map<Integer, List<EveOrder>> myOrder) {
         List<Integer> idList = new ArrayList<>();
         Iterator<Integer> iter = myOrder.keySet().iterator();
         while(iter.hasNext()) {
@@ -149,8 +144,8 @@ public class BusinessService extends ServiceBase {
             if(high < 0) {
                 continue;
             }
-            double jitaHigh = getJitaBuyHighPrice(id);
-            if(jitaHigh > high) {
+            double forgeHigh = getForgeBuyHighPrice(id);
+            if(forgeHigh > high) {
                 idList.add(id);
             }
         }
@@ -160,7 +155,7 @@ public class BusinessService extends ServiceBase {
         return itemsMapper.selectByExample(example);
     }
 
-    private double getJitaBuyHighPrice(Integer id) {
+    private double getForgeBuyHighPrice(Integer id) {
         Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("datasource", PrjConst.DATASOURCE);
         paramMap.put("page", 1);
@@ -192,9 +187,9 @@ public class BusinessService extends ServiceBase {
             if(!order.isBuyOrder()) {
                 continue;
             }
-            if(!order.getLocationId().equals(PrjConst.STATION_ID_JITA_NAVY4)) {
-                continue;
-            }
+//            if(!order.getLocationId().equals(PrjConst.STATION_ID_JITA_NAVY4)) {
+//                continue;
+//            }
             if(buyHighest < order.getPrice()) {
                 buyHighest = order.getPrice();
             }
@@ -362,7 +357,7 @@ public class BusinessService extends ServiceBase {
     }
 
     public void parseStationMarket(AuthAccount account, AuthAccount jitaAccount, String stationID,
-                                   int flowFilter, double hopeRoi, boolean onLackBPSearch) throws Exception {
+                                   int flowFilter, double hopeRoi, boolean detail) throws Exception {
         Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
 
 //        List<EveOrder> orderList = orderMap.get(40362);
@@ -379,15 +374,17 @@ public class BusinessService extends ServiceBase {
         pool.invoke(task);
         Map<Integer, OrderParseResult> result = task.join();
 
-        System.out.println("得到拥有蓝图");
-        List<CharBlueprint> ownBpID = getOwnBlueprint();
-        List<Integer> fullIDList = getFullResearchIDList(ownBpID);
-        List<Integer> manuTypeIDList =  getCanManuTypeID(fullIDList);
-        System.out.println("输出推荐购买货物");
-        outRecommendedSimple(result, manuTypeIDList);
-        if(onLackBPSearch) {
+        if(detail) {
+            System.out.println("得到拥有蓝图");
+            List<CharBlueprint> ownBpID = getOwnBlueprint();
+            List<Integer> fullIDList = getFullResearchIDList(ownBpID);
+            List<Integer> manuTypeIDList =  getCanManuTypeID(fullIDList);
+            System.out.println("输出推荐购买货物");
+            outParseResult(result, manuTypeIDList);
             System.out.println("输出推荐购买蓝图");
             outLackBlueprint(ownBpID, result.keySet(), itemMap);
+        } else {
+            outParseResultSimple(result);
         }
     }
 
@@ -556,7 +553,7 @@ public class BusinessService extends ServiceBase {
         return idList;
     }
 
-    private void outRecommendedSimple(Map<Integer, OrderParseResult> result, List<Integer> manuTypeIDList) throws IOException {
+    private void outParseResultSimple(Map<Integer, OrderParseResult> result) throws IOException {
         File file = new File("result/trade/simple");
         FileWriter writer = new FileWriter(file);
 
@@ -568,23 +565,10 @@ public class BusinessService extends ServiceBase {
             }
         });
 
-        List<Map.Entry<Integer,OrderParseResult>> bpManuList = new ArrayList<>();
         for (Map.Entry<Integer,OrderParseResult> item : list) {
             Integer id = item.getKey();
-            if(manuTypeIDList.contains(id)) {
-                bpManuList.add(item);
-                continue;
-            }
             OrderParseResult orderParseResult = item.getValue();
-            String record = getPurchaseRecord(orderParseResult, orderParseResult.getItem().getEnName());
-            writer.write(record);
-            writer.write("\r\n");
-        }
-        writer.write("===============manufacturing==============");
-        writer.write("\r\n");
-        for (Map.Entry<Integer,OrderParseResult> item : bpManuList) {
-            OrderParseResult orderParseResult = item.getValue();
-            String record = getPurchaseRecord(orderParseResult, orderParseResult.getItem().getEnName());
+            String record = getSimplePurchaseRecord(orderParseResult);
             writer.write(record);
             writer.write("\r\n");
         }
@@ -592,15 +576,97 @@ public class BusinessService extends ServiceBase {
         writer.close();
     }
 
-    private String getPurchaseRecord(OrderParseResult orderParseResult, String enName) {
+    private void outParseResult(Map<Integer, OrderParseResult> result, List<Integer> manuTypeIDList) throws IOException {
+        File file = new File("result/trade/parseDetail");
+        FileWriter writer = new FileWriter(file);
+
+        List<Map.Entry<Integer,OrderParseResult>> list = new ArrayList<>(result.entrySet());
+        Collections.sort(list, new Comparator<Map.Entry<Integer, OrderParseResult>>() {
+            @Override
+            public int compare(Map.Entry<Integer, OrderParseResult> o1, Map.Entry<Integer, OrderParseResult> o2) {
+                return o2.getValue().getStatisticData().getTotalProfit() - o1.getValue().getStatisticData().getTotalProfit();
+            }
+        });
+
+        List<Map.Entry<Integer,OrderParseResult>> bpManuList = new ArrayList<>();
+        List<Map.Entry<Integer,OrderParseResult>> bigVolList = new ArrayList<>();
+        for (Map.Entry<Integer,OrderParseResult> item : list) {
+            Integer id = item.getKey();
+            if(manuTypeIDList.contains(id)) {
+                bpManuList.add(item);
+                continue;
+            }
+            OrderParseResult orderParseResult = item.getValue();
+            if(orderParseResult.getItem().getVolume() > 500) {
+                bigVolList.add(item);
+                continue;
+            }
+            String record = getPurchaseRecord(orderParseResult);
+            writer.write(record);
+            writer.write("\r\n");
+        }
+        outBigVolume(writer, bigVolList);
+        outManufacturing(writer, bpManuList);
+        writer.flush();
+        writer.close();
+    }
+
+    private void outManufacturing(FileWriter writer, List<Map.Entry<Integer, OrderParseResult>> bpManuList) throws IOException {
+        writer.write("===============manufacturing==============");
+        writer.write("\r\n");
+        for (Map.Entry<Integer,OrderParseResult> item : bpManuList) {
+            OrderParseResult orderParseResult = item.getValue();
+            String record = getSimplePurchaseRecord(orderParseResult);
+            writer.write(record);
+            writer.write("\r\n");
+        }
+    }
+
+    private void outBigVolume(FileWriter writer, List<Map.Entry<Integer, OrderParseResult>> bigVolList) throws IOException {
+        writer.write("===============BigVolume==============");
+        writer.write("\r\n");
+        for (Map.Entry<Integer,OrderParseResult> item : bigVolList) {
+            OrderParseResult orderParseResult = item.getValue();
+            StringBuilder record = new StringBuilder();
+            record.append(orderParseResult.getItem().getEnName());
+            record.append(" x");
+            record.append(orderParseResult.getRecommendedCount());
+            record.append("\t");
+            record.append(orderParseResult.getStatisticData().getProfit());
+            record.append("\t");
+            record.append(orderParseResult.getStatisticData().getProfitMargin());
+            record.append("\t");
+            record.append(orderParseResult.getItem().getVolume());
+            writer.write(record.toString());
+            writer.write("\r\n");
+        }
+    }
+
+    private String getSimplePurchaseRecord(OrderParseResult orderParseResult) {
         StringBuilder sb = new StringBuilder();
-        sb.append(enName);
+        sb.append(orderParseResult.getItem().getEnName());
+        sb.append(" x");
+        sb.append(orderParseResult.getRecommendedCount());
+        return sb.toString();
+    }
+
+    private String getPurchaseRecord(OrderParseResult orderParseResult) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(orderParseResult.getItem().getEnName());
         sb.append(" x");
         sb.append(orderParseResult.getRecommendedCount());
         sb.append("\t");
         sb.append(orderParseResult.getStatisticData().getProfit());
         sb.append("\t");
         sb.append(orderParseResult.getStatisticData().getProfitMargin());
+        sb.append("\t");
+        double min = orderParseResult.getEveMarketData().getSell().getMin();
+        double max = orderParseResult.getEveMarketData().getBuy().getMax();
+        if(0.1 < (min - max)/min) {
+            sb.append("true");
+        } else {
+            sb.append("false");
+        }
         return sb.toString();
     }
 

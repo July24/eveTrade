@@ -2,6 +2,7 @@ package com.eve.util;
 
 
 import cn.hutool.core.util.NumberUtil;
+import cn.hutool.http.HttpException;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
@@ -152,7 +153,17 @@ public class TradeUtil {
     }
 
     public static HttpResponse sendGetRequest(String url, Map<String, Object> paramMap) {
-        return HttpRequest.get(url).form(paramMap).execute();
+        int i = 0;
+        while (true) {
+            try {
+                return HttpRequest.get(url).form(paramMap).execute();
+            } catch (HttpException e) {
+                if(i >= 3) {
+                    throw e;
+                }
+                i++;
+            }
+        }
     }
 
     public static String replaceBraces(String url, String replace) {
