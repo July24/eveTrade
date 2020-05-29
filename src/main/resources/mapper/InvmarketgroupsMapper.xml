@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eve.dao.InvmarketgroupsMapper">
+  <resultMap id="BaseResultMap" type="com.eve.entity.database.Invmarketgroups">
+    <id column="marketGroupID" jdbcType="INTEGER" property="marketgroupid" />
+    <result column="parentGroupID" jdbcType="INTEGER" property="parentgroupid" />
+    <result column="marketGroupName" jdbcType="VARCHAR" property="marketgroupname" />
+    <result column="description" jdbcType="VARCHAR" property="description" />
+    <result column="iconID" jdbcType="INTEGER" property="iconid" />
+    <result column="hasTypes" jdbcType="BIT" property="hastypes" />
+  </resultMap>
+  <sql id="Example_Where_Clause">
+    <where>
+      <foreach collection="oredCriteria" item="criteria" separator="or">
+        <if test="criteria.valid">
+          <trim prefix="(" prefixOverrides="and" suffix=")">
+            <foreach collection="criteria.criteria" item="criterion">
+              <choose>
+                <when test="criterion.noValue">
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue">
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue">
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue">
+                  and ${criterion.condition}
+                  <foreach close=")" collection="criterion.value" item="listItem" open="(" separator=",">
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Update_By_Example_Where_Clause">
+    <where>
+      <foreach collection="example.oredCriteria" item="criteria" separator="or">
+        <if test="criteria.valid">
+          <trim prefix="(" prefixOverrides="and" suffix=")">
+            <foreach collection="criteria.criteria" item="criterion">
+              <choose>
+                <when test="criterion.noValue">
+                  and ${criterion.condition}
+                </when>
+                <when test="criterion.singleValue">
+                  and ${criterion.condition} #{criterion.value}
+                </when>
+                <when test="criterion.betweenValue">
+                  and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
+                </when>
+                <when test="criterion.listValue">
+                  and ${criterion.condition}
+                  <foreach close=")" collection="criterion.value" item="listItem" open="(" separator=",">
+                    #{listItem}
+                  </foreach>
+                </when>
+              </choose>
+            </foreach>
+          </trim>
+        </if>
+      </foreach>
+    </where>
+  </sql>
+  <sql id="Base_Column_List">
+    marketGroupID, parentGroupID, marketGroupName, description, iconID, hasTypes
+  </sql>
+  <select id="selectByExample" parameterType="com.eve.entity.database.InvmarketgroupsExample" resultMap="BaseResultMap">
+    select
+    <if test="distinct">
+      distinct
+    </if>
+    <include refid="Base_Column_List" />
+    from invmarketgroups
+    <if test="_parameter != null">
+      <include refid="Example_Where_Clause" />
+    </if>
+    <if test="orderByClause != null">
+      order by ${orderByClause}
+    </if>
+  </select>
+  <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+    select 
+    <include refid="Base_Column_List" />
+    from invmarketgroups
+    where marketGroupID = #{marketgroupid,jdbcType=INTEGER}
+  </select>
+  <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+    delete from invmarketgroups
+    where marketGroupID = #{marketgroupid,jdbcType=INTEGER}
+  </delete>
+  <delete id="deleteByExample" parameterType="com.eve.entity.database.InvmarketgroupsExample">
+    delete from invmarketgroups
+    <if test="_parameter != null">
+      <include refid="Example_Where_Clause" />
+    </if>
+  </delete>
+  <insert id="insert" parameterType="com.eve.entity.database.Invmarketgroups">
+    insert into invmarketgroups (marketGroupID, parentGroupID, marketGroupName, 
+      description, iconID, hasTypes
+      )
+    values (#{marketgroupid,jdbcType=INTEGER}, #{parentgroupid,jdbcType=INTEGER}, #{marketgroupname,jdbcType=VARCHAR}, 
+      #{description,jdbcType=VARCHAR}, #{iconid,jdbcType=INTEGER}, #{hastypes,jdbcType=BIT}
+      )
+  </insert>
+  <insert id="insertSelective" parameterType="com.eve.entity.database.Invmarketgroups">
+    insert into invmarketgroups
+    <trim prefix="(" suffix=")" suffixOverrides=",">
+      <if test="marketgroupid != null">
+        marketGroupID,
+      </if>
+      <if test="parentgroupid != null">
+        parentGroupID,
+      </if>
+      <if test="marketgroupname != null">
+        marketGroupName,
+      </if>
+      <if test="description != null">
+        description,
+      </if>
+      <if test="iconid != null">
+        iconID,
+      </if>
+      <if test="hastypes != null">
+        hasTypes,
+      </if>
+    </trim>
+    <trim prefix="values (" suffix=")" suffixOverrides=",">
+      <if test="marketgroupid != null">
+        #{marketgroupid,jdbcType=INTEGER},
+      </if>
+      <if test="parentgroupid != null">
+        #{parentgroupid,jdbcType=INTEGER},
+      </if>
+      <if test="marketgroupname != null">
+        #{marketgroupname,jdbcType=VARCHAR},
+      </if>
+      <if test="description != null">
+        #{description,jdbcType=VARCHAR},
+      </if>
+      <if test="iconid != null">
+        #{iconid,jdbcType=INTEGER},
+      </if>
+      <if test="hastypes != null">
+        #{hastypes,jdbcType=BIT},
+      </if>
+    </trim>
+  </insert>
+  <select id="countByExample" parameterType="com.eve.entity.database.InvmarketgroupsExample" resultType="java.lang.Long">
+    select count(*) from invmarketgroups
+    <if test="_parameter != null">
+      <include refid="Example_Where_Clause" />
+    </if>
+  </select>
+  <update id="updateByExampleSelective" parameterType="map">
+    update invmarketgroups
+    <set>
+      <if test="record.marketgroupid != null">
+        marketGroupID = #{record.marketgroupid,jdbcType=INTEGER},
+      </if>
+      <if test="record.parentgroupid != null">
+        parentGroupID = #{record.parentgroupid,jdbcType=INTEGER},
+      </if>
+      <if test="record.marketgroupname != null">
+        marketGroupName = #{record.marketgroupname,jdbcType=VARCHAR},
+      </if>
+      <if test="record.description != null">
+        description = #{record.description,jdbcType=VARCHAR},
+      </if>
+      <if test="record.iconid != null">
+        iconID = #{record.iconid,jdbcType=INTEGER},
+      </if>
+      <if test="record.hastypes != null">
+        hasTypes = #{record.hastypes,jdbcType=BIT},
+      </if>
+    </set>
+    <if test="_parameter != null">
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByExample" parameterType="map">
+    update invmarketgroups
+    set marketGroupID = #{record.marketgroupid,jdbcType=INTEGER},
+      parentGroupID = #{record.parentgroupid,jdbcType=INTEGER},
+      marketGroupName = #{record.marketgroupname,jdbcType=VARCHAR},
+      description = #{record.description,jdbcType=VARCHAR},
+      iconID = #{record.iconid,jdbcType=INTEGER},
+      hasTypes = #{record.hastypes,jdbcType=BIT}
+    <if test="_parameter != null">
+      <include refid="Update_By_Example_Where_Clause" />
+    </if>
+  </update>
+  <update id="updateByPrimaryKeySelective" parameterType="com.eve.entity.database.Invmarketgroups">
+    update invmarketgroups
+    <set>
+      <if test="parentgroupid != null">
+        parentGroupID = #{parentgroupid,jdbcType=INTEGER},
+      </if>
+      <if test="marketgroupname != null">
+        marketGroupName = #{marketgroupname,jdbcType=VARCHAR},
+      </if>
+      <if test="description != null">
+        description = #{description,jdbcType=VARCHAR},
+      </if>
+      <if test="iconid != null">
+        iconID = #{iconid,jdbcType=INTEGER},
+      </if>
+      <if test="hastypes != null">
+        hasTypes = #{hastypes,jdbcType=BIT},
+      </if>
+    </set>
+    where marketGroupID = #{marketgroupid,jdbcType=INTEGER}
+  </update>
+  <update id="updateByPrimaryKey" parameterType="com.eve.entity.database.Invmarketgroups">
+    update invmarketgroups
+    set parentGroupID = #{parentgroupid,jdbcType=INTEGER},
+      marketGroupName = #{marketgroupname,jdbcType=VARCHAR},
+      description = #{description,jdbcType=VARCHAR},
+      iconID = #{iconid,jdbcType=INTEGER},
+      hasTypes = #{hastypes,jdbcType=BIT}
+    where marketGroupID = #{marketgroupid,jdbcType=INTEGER}
+  </update>
+</mapper>

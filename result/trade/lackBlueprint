@@ -1,3 +1,6 @@
+Nuclear S Blueprint
+Titanium Sabot S Blueprint
+Phased Plasma S Blueprint
 Mjolnir Cruise Missile Blueprint
 Scourge Cruise Missile Blueprint
 Nova Cruise Missile Blueprint
@@ -8,44 +11,48 @@ Scourge Light Missile Blueprint
 Inferno Light Missile Blueprint
 Mjolnir Light Missile Blueprint
 Nova Light Missile Blueprint
-125mm Gatling AutoCannon I Blueprint
-250mm Light Artillery Cannon I Blueprint
-Nuclear S Blueprint
-Depleted Uranium S Blueprint
-Titanium Sabot S Blueprint
-Phased Plasma S Blueprint
-EMP S Blueprint
-Small Shield Extender I Blueprint
-Small Shield Extender II Blueprint
-Light Neutron Blaster I Blueprint
-Adaptive Invulnerability Field I Blueprint
 Iron Charge S Blueprint
 Tungsten Charge S Blueprint
 Iridium Charge S Blueprint
+Lead Charge S Blueprint
 Uranium Charge S Blueprint
-Antimatter Charge S Blueprint
 Iron Charge M Blueprint
-Tungsten Charge M Blueprint
 Plutonium Charge M Blueprint
-Antimatter Charge M Blueprint
 Antimatter Charge L Blueprint
 Ultraviolet L Blueprint
 Cap Booster 25 Blueprint
-Small Armor Repairer II Blueprint
-Auto Targeting System I Blueprint
 Scourge Rocket Blueprint
+Small Shield Extender I Blueprint
+Small Shield Extender II Blueprint
+Shield Recharger II Blueprint
+125mm Gatling AutoCannon I Blueprint
+250mm Light Artillery Cannon I Blueprint
+Stasis Webifier I Blueprint
+Light Neutron Blaster I Blueprint
+150mm Railgun I Blueprint
+Adaptive Invulnerability Field I Blueprint
+Auto Targeting System I Blueprint
+Small Armor Repairer II Blueprint
+Cap Recharger I Blueprint
 Overdrive Injector System II Blueprint
 Capacitor Flux Coil II Blueprint
 Expanded Cargohold I Blueprint
 Expanded Cargohold II Blueprint
 Inertial Stabilizers II Blueprint
+Capacitor Power Relay I Blueprint
+Capacitor Power Relay II Blueprint
 Power Diagnostic System I Blueprint
 Scourge Auto-Targeting Light Missile I Blueprint
 Inferno Auto-Targeting Light Missile I Blueprint
 Mjolnir Auto-Targeting Cruise Missile I Blueprint
 Inferno Auto-Targeting Cruise Missile I Blueprint
 Rapid Light Missile Launcher II Blueprint
+Sensor Booster II Blueprint
+Sensor Booster I Blueprint
+Signal Amplifier II Blueprint
+Tracking Enhancer II Blueprint
 Cargo Scanner II Blueprint
+Damage Control II Blueprint
 Infiltrator II Blueprint
 Hammerhead II Blueprint
 Praetor II Blueprint
@@ -64,7 +71,9 @@ Berserker II Blueprint
 Warrior II Blueprint
 Mjolnir Rocket Blueprint
 EM Ward Amplifier II Blueprint
+Gravimetric ECM II Blueprint
 Nanofiber Internal Structure II Blueprint
+Inferno Fury Cruise Missile Blueprint
 Inferno Precision Cruise Missile Blueprint
 Nova Precision Heavy Missile Blueprint
 Nova Javelin Torpedo Blueprint
@@ -73,38 +82,35 @@ Inferno Rage Torpedo Blueprint
 220mm Vulcan AutoCannon II Blueprint
 425mm AutoCannon II Blueprint
 280mm Howitzer Artillery II Blueprint
+Mega Pulse Laser II Blueprint
 150mm Railgun II Blueprint
 250mm Railgun II Blueprint
 Heavy Ion Blaster II Blueprint
 Heavy Neutron Blaster II Blueprint
+Warp Disruptor II Blueprint
 Small Capacitor Booster II Blueprint
 Heavy Capacitor Booster II Blueprint
 Large Shield Extender I Blueprint
 Large Shield Extender II Blueprint
-Drone Damage Amplifier I Blueprint
+Co-Processor I Blueprint
+Co-Processor II Blueprint
+Large Ancillary Shield Booster Blueprint
+Medium Processor Overclocking Unit II Blueprint
 Magnetic Field Stabilizer II Blueprint
 Mining Drone I Blueprint
 Mining Drone II Blueprint
 Rocket Launcher II Blueprint
 125mm Railgun I Blueprint
-X-Large Shield Booster II Blueprint
 Large Shield Booster II Blueprint
 Energized Adaptive Nano Membrane II Blueprint
 Shield Boost Amplifier I Blueprint
 Micro Auxiliary Power Core I Blueprint
-Co-Processor I Blueprint
 Warp Core Stabilizer II Blueprint
 Armor Explosive Hardener II Blueprint
-Co-Processor II Blueprint
-Gravimetric ECM II Blueprint
-Sensor Booster II Blueprint
-Signal Amplifier II Blueprint
-Tracking Enhancer II Blueprint
 50MN Microwarpdrive II Blueprint
-Medium Energy Neutralizer I Blueprint
+Mobile Small Warp Disruptor I Blueprint
 Heavy Energy Neutralizer II Blueprint
 Ballistic Control System I Blueprint
-Mobile Small Warp Disruptor I Blueprint
 Gleam S Blueprint
 Conflagration S Blueprint
 Hail S Blueprint
@@ -115,29 +121,41 @@ Barrage S Blueprint
 Tremor M Blueprint
 Barrage L Blueprint
 Hail M Blueprint
+Hail L Blueprint
 Void L Blueprint
 Conflagration M Blueprint
-Conflagration L Blueprint
+Scorch M Blueprint
+Scorch L Blueprint
 Aurora M Blueprint
+Aurora L Blueprint
 Gleam L Blueprint
 Small Energy Nosferatu II Blueprint
 Small Energy Neutralizer II Blueprint
+Mjolnir Javelin Rocket Blueprint
+Nova Javelin Heavy Assault Missile Blueprint
+Standard Mindflood Booster Blueprint
+Standard Exile Booster Blueprint
 Caldari Navy Ballistic Control System Blueprint
+Ice Harvester I Blueprint
+Caesarium Cadmide Reaction Formula
+Small Audit Log Secure Container Blueprint
 Strip Miner I Blueprint
-EMP XL Blueprint
 Core Probe Launcher I Blueprint
 Arkonor Mining Crystal II Blueprint
 Veldspar Mining Crystal II Blueprint
 Expanded Probe Launcher I Blueprint
 Cruise Missile Launcher II Blueprint
 Phased Weapon Navigation Array Generation Extron Blueprint
+Mjolnir Heavy Assault Missile Blueprint
 800mm Steel Plates II Blueprint
 Vespa II Blueprint
 Valkyrie II Blueprint
 Data Analyzer I Blueprint
 Relic Analyzer I Blueprint
+Ice Harvester II Blueprint
 Ballistic Control System II Blueprint
 Mining Laser Upgrade I Blueprint
+Ice Harvester Upgrade I Blueprint
 Interdiction Sphere Launcher I Blueprint
 Templar I Blueprint
 Dragonfly I Blueprint
@@ -147,38 +165,35 @@ Curator I Blueprint
 Drone Link Augmentor I Blueprint
 Vespa EC-600 Blueprint
 Hornet EC-300 Blueprint
+Medium Armor Maintenance Bot I Blueprint
 Light Armor Maintenance Bot I Blueprint
 Light Shield Maintenance Bot I Blueprint
 Modulated Deep Core Strip Miner II Blueprint
+Drone Navigation Computer I Blueprint
 Drone Link Augmentor II Blueprint
 Inferno Rage Rocket Blueprint
-Scourge Fury Light Missile Blueprint
+Scourge Javelin Rocket Blueprint
+Scourge Javelin Heavy Assault Missile Blueprint
+Inferno Javelin Heavy Assault Missile Blueprint
 Mjolnir Precision Light Missile Blueprint
 Nova Fury Heavy Missile Blueprint
 Inferno Fury Heavy Missile Blueprint
+Inferno Precision Heavy Missile Blueprint
 Inferno Javelin Torpedo Blueprint
 Mjolnir Javelin Torpedo Blueprint
 Scourge Javelin Torpedo Blueprint
 Scourge Fury Cruise Missile Blueprint
+Mjolnir Fury Cruise Missile Blueprint
 Mjolnir Precision Cruise Missile Blueprint
-Inferno Javelin Rocket Blueprint
-Mjolnir Javelin Rocket Blueprint
-Scourge Javelin Rocket Blueprint
-Scourge Javelin Heavy Assault Missile Blueprint
-Inferno Javelin Heavy Assault Missile Blueprint
-Nova Javelin Heavy Assault Missile Blueprint
-Standard Mindflood Booster Blueprint
-Standard Exile Booster Blueprint
 Heavy Assault Missile Launcher II Blueprint
 Salvager I Blueprint
 Large Capacitor Control Circuit II Blueprint
+Mobile Large Warp Disruptor II Blueprint
 Small Processor Overclocking Unit II Blueprint
 Shrapnel Bomb Blueprint
-Electron Bomb Blueprint
 Curator II Blueprint
 'Integrated' Acolyte Blueprint
 'Integrated' Hobgoblin Blueprint
-'Augmented' Infiltrator Blueprint
 'Augmented' Praetor Blueprint
 Republic Fleet Carbonized Lead M Blueprint
 Republic Fleet Carbonized Lead S Blueprint
@@ -191,40 +206,42 @@ Targeting Range Script Blueprint
 Scan Resolution Script Blueprint
 Core Scanner Probe I Blueprint
 Combat Scanner Probe I Blueprint
+Capital Trimark Armor Pump I Blueprint
 Small Trimark Armor Pump II Blueprint
 Medium Trimark Armor Pump II Blueprint
-Medium Salvage Tackle I Blueprint
 Small Auxiliary Thrusters I Blueprint
 Small Auxiliary Thrusters II Blueprint
 Small Low Friction Nozzle Joints I Blueprint
 Medium Low Friction Nozzle Joints I Blueprint
 Capital Hyperspatial Velocity Optimizer I Blueprint
 Small Hyperspatial Velocity Optimizer II Blueprint
-Medium Hyperspatial Velocity Optimizer II Blueprint
 Small Low Friction Nozzle Joints II Blueprint
-Medium Low Friction Nozzle Joints II Blueprint
 Small Polycarbon Engine Housing I Blueprint
 Small Polycarbon Engine Housing II Blueprint
 Small Ionic Field Projector II Blueprint
+Small Hybrid Locus Coordinator I Blueprint
 Small Hydraulic Bay Thrusters I Blueprint
-Medium Anti-EM Screen Reinforcer II Blueprint
 Small Anti-Thermal Screen Reinforcer I Blueprint
 Medium Anti-Thermal Screen Reinforcer II Blueprint
 Medium Core Defense Field Purger II Blueprint
 Imperial Navy Acolyte Blueprint
 Imperial Navy Praetor Blueprint
 Federation Navy Hammerhead Blueprint
+Republic Fleet Warrior Blueprint
 Caldari Navy Medium Shield Extender Blueprint
 Caldari Navy Large Shield Extender Blueprint
-Malleus I Blueprint
-Small Audit Log Secure Container Blueprint
+Cyclops I Blueprint
 Salvage Drone I Blueprint
+Medium Ice Harvester Accelerator I Blueprint
 Scan Rangefinding Array I Blueprint
 Survey Probe Launcher I Blueprint
+Rapid Heavy Missile Launcher II Blueprint
 Mobile Depot Blueprint
 Heavy Hull Maintenance Bot II Blueprint
 Small Transverse Bulkhead I Blueprint
+Small Transverse Bulkhead II Blueprint
 Medium Transverse Bulkhead I Blueprint
+Medium Transverse Bulkhead II Blueprint
 Polarized Torpedo Launcher Blueprint
 Missile Guidance Enhancer II Blueprint
 Missile Guidance Computer I Blueprint
@@ -232,38 +249,41 @@ Missile Guidance Computer II Blueprint
 Missile Range Script Blueprint
 Missile Precision Script Blueprint
 Micro Jump Field Generator Blueprint
+Satyr I Blueprint
+Dragonfly II Blueprint
 ECCM Script Blueprint
 Void XL Blueprint
 Null XL Blueprint
 Javelin XL Blueprint
-Equite I Blueprint
-Satyr I Blueprint
 Fighter Support Unit II Blueprint
-Armor Reinforcement Charge Blueprint
-Rapid Repair Charge Blueprint
-Electronic Hardening Charge Blueprint
-Electronic Superiority Charge Blueprint
-Sensor Optimization Charge Blueprint
-Mining Equipment Preservation Charge Blueprint
+Capital Capacitor Booster II Blueprint
+Armor Command Burst I Blueprint
+Active Shielding Charge Blueprint
+Shield Harmonizing Charge Blueprint
+Shield Extension Charge Blueprint
 Mining Laser Field Enhancement Charge Blueprint
 Mining Laser Optimization Charge Blueprint
-Active Shielding Charge Blueprint
-Shield Extension Charge Blueprint
-Shield Harmonizing Charge Blueprint
+Mining Equipment Preservation Charge Blueprint
+Rapid Repair Charge Blueprint
+Armor Reinforcement Charge Blueprint
+Sensor Optimization Charge Blueprint
+Electronic Superiority Charge Blueprint
+Electronic Hardening Charge Blueprint
 Evasive Maneuvers Charge Blueprint
 Interdiction Maneuvers Charge Blueprint
-Rapid Deployment Charge Blueprint
-Armor Command Burst I Blueprint
-Armor Command Burst II Blueprint
 Mining Foreman Burst II Blueprint
+Armor Command Burst II Blueprint
+Shield Command Burst II Blueprint
 Skirmish Command Burst II Blueprint
-Caesarium Cadmide Reaction Formula
+Defender Launcher I Blueprint
 Tetryon Exotic Plasma S Blueprint
+Tetryon Exotic Plasma M Blueprint
+Tetryon Exotic Plasma L Blueprint
 Meson Exotic Plasma S Blueprint
 Occult S Blueprint
 Mystic S Blueprint
 Baryon Exotic Plasma M Blueprint
-Tetryon Exotic Plasma L Blueprint
+Occult M Blueprint
 Baryon Exotic Plasma L Blueprint
 Meson Exotic Plasma L Blueprint
 Mystic L Blueprint

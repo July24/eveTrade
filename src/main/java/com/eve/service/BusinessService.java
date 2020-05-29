@@ -9,9 +9,9 @@ import cn.hutool.core.util.NumberUtil;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
-import com.eve.dao.IndustryActivityProductsMapper;
+import com.eve.dao.IndustryactivityproductsMapper;
+import com.eve.dao.InvmarketgroupsMapper;
 import com.eve.dao.ItemsMapper;
-import com.eve.dao.MarketgroupsMapper;
 import com.eve.entity.*;
 import com.eve.entity.database.*;
 import com.eve.util.DBConst;
@@ -389,12 +389,12 @@ public class BusinessService extends ServiceBase {
     }
 
     private List<Integer> getCanManuTypeID(List<Integer> fullIDList) {
-        IndustryActivityProductsMapper productMapper = getIndustryActivityProductsMapper();
-        IndustryActivityProductsExample example = new IndustryActivityProductsExample();
-        example.createCriteria().andBlueprinttypeidIn(fullIDList).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING);
-        List<IndustryActivityProducts> industryActivityProductsList = productMapper.selectByExample(example);
+        IndustryactivityproductsMapper productMapper = getIndustryActivityProductsMapper();
+        IndustryactivityproductsExample example = new IndustryactivityproductsExample();
+        example.createCriteria().andTypeidIn(fullIDList).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING);
+        List<Industryactivityproducts> industryActivityProductsList = productMapper.selectByExample(example);
         List<Integer> ret = new ArrayList<>();
-        for(IndustryActivityProducts products : industryActivityProductsList) {
+        for(Industryactivityproducts products : industryActivityProductsList) {
             ret.add(products.getProducttypeid());
         }
         return ret;
@@ -439,15 +439,15 @@ public class BusinessService extends ServiceBase {
 
     private List<Integer> getNeedBpIDList(List<Integer> ownBpID, Set<Integer> keySet) {
         List<Integer> ret = new ArrayList<>();
-        IndustryActivityProductsMapper productsMapper = getIndustryActivityProductsMapper();
-        IndustryActivityProductsExample example = new IndustryActivityProductsExample();
+        IndustryactivityproductsMapper productsMapper = getIndustryActivityProductsMapper();
+        IndustryactivityproductsExample example = new IndustryactivityproductsExample();
         example.createCriteria().andProducttypeidIn(new ArrayList<>(keySet));
-        List<IndustryActivityProducts> activityProductsList = productsMapper.selectByExample(example);
-        for(IndustryActivityProducts products : activityProductsList) {
-            if(ownBpID.contains(products.getBlueprinttypeid())) {
+        List<Industryactivityproducts> activityProductsList = productsMapper.selectByExample(example);
+        for(Industryactivityproducts products : activityProductsList) {
+            if(ownBpID.contains(products.getTypeid())) {
                 continue;
             }
-            ret.add(products.getBlueprinttypeid());
+            ret.add(products.getTypeid());
         }
         return ret;
     }
@@ -544,11 +544,11 @@ public class BusinessService extends ServiceBase {
 
     private List<Integer> getAmmuSubMarketType() {
         List<Integer> idList = new ArrayList<>();
-        MarketgroupsMapper marketgroupsMapper = getMarketgroupsMapper();
+        InvmarketgroupsMapper marketgroupsMapper = getMarketgroupsMapper();
 
-        MarketgroupsExample example = new MarketgroupsExample();
+        InvmarketgroupsExample example = new InvmarketgroupsExample();
         example.createCriteria().andMarketgroupidEqualTo(DBConst.MARKET_GROUP_ROOT_AMMUNITION_CHARGES);
-        List<Marketgroups> marketgroups = marketgroupsMapper.selectByExample(example);
+        List<Invmarketgroups> marketgroups = marketgroupsMapper.selectByExample(example);
 
         return idList;
     }

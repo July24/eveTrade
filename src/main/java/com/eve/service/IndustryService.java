@@ -5,8 +5,8 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.eve.dao.IndustryActivityMaterialsMapper;
-import com.eve.dao.IndustryActivityProductsMapper;
+import com.eve.dao.IndustryactivitymaterialsMapper;
+import com.eve.dao.IndustryactivityproductsMapper;
 import com.eve.dao.ItemsMapper;
 import com.eve.entity.AuthAccount;
 import com.eve.entity.EveOrder;
@@ -27,12 +27,12 @@ public class IndustryService extends ServiceBase {
     public static void main(String[] args) throws Exception {
         IndustryService is = new IndustryService();
         Map<String, Integer> productMap = new HashMap<>();
-        productMap.put("Phased Plasma M",5000);
-        productMap.put("Fusion M",5000);
+        productMap.put("Phased Plasma M",15000);
+        productMap.put("Fusion M",15000);
 //        productMap.put("425mm AutoCannon I",10);
-//        is.getListNeedMaterial(productMap);
-        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
-        is.getManufacturingList(account, 0.3);
+        is.getListNeedMaterial(productMap);
+//        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
+//        is.getManufacturingList(account, 0.3);
     }
 
     public void getManufacturingList(AuthAccount rfAccount,
@@ -76,23 +76,23 @@ public class IndustryService extends ServiceBase {
     }
 
     private void assemblePurchasePrice(Map<Integer, IndustryProduct> productMap, ItemsMapper itemsMapper) {
-        IndustryActivityMaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
+        IndustryactivitymaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
         Iterator<Integer> iter = productMap.keySet().iterator();
         while(iter.hasNext()) {
             Integer id = iter.next();
             IndustryProduct product = productMap.get(id);
-            IndustryActivityMaterialsExample example =
-                    new IndustryActivityMaterialsExample();
-            example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andBlueprinttypeidEqualTo(product.getBlueprintTypeID());
-            List<IndustryActivityMaterials> materials = materialsMapper.selectByExample(example);
+            IndustryactivitymaterialsExample example =
+                    new IndustryactivitymaterialsExample();
+            example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andTypeidEqualTo(product.getBlueprintTypeID());
+            List<Industryactivitymaterials> materials = materialsMapper.selectByExample(example);
             double appraise = getAppraise(materials, itemsMapper, product);
             product.setPurchasePrice(appraise);
         }
     }
 
-    private double getAppraise(List<IndustryActivityMaterials> materials, ItemsMapper itemsMapper, IndustryProduct product) {
+    private double getAppraise(List<Industryactivitymaterials> materials, ItemsMapper itemsMapper, IndustryProduct product) {
         StringBuilder sb = new StringBuilder();
-        for(IndustryActivityMaterials material : materials) {
+        for(Industryactivitymaterials material : materials) {
             Items item = itemsMapper.selectByPrimaryKey(material.getMaterialtypeid());
             sb.append(item.getEnName());
             sb.append(" ");
@@ -143,17 +143,17 @@ public class IndustryService extends ServiceBase {
 
     private Map<Integer, IndustryProduct> getProductIDList() {
         Map<Integer, IndustryProduct> ret = new HashMap<>();
-        IndustryActivityProductsMapper productsMapper =
+        IndustryactivityproductsMapper productsMapper =
                 getIndustryActivityProductsMapper();
-        IndustryActivityProductsExample example =
-                new IndustryActivityProductsExample();
-        example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andBlueprinttypeidIn(new ArrayList<>(Arrays.asList(PrjConst.OWN_BLUEPRINT)));
-        List<IndustryActivityProducts> industryActivityProducts = productsMapper.selectByExample(example);
-        for(IndustryActivityProducts products : industryActivityProducts) {
+        IndustryactivityproductsExample example =
+                new IndustryactivityproductsExample();
+        example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andTypeidIn(new ArrayList<>(Arrays.asList(PrjConst.OWN_BLUEPRINT)));
+        List<Industryactivityproducts> industryActivityProducts = productsMapper.selectByExample(example);
+        for(Industryactivityproducts products : industryActivityProducts) {
             Integer id = products.getProducttypeid();
             IndustryProduct product = new IndustryProduct();
             product.setTypeID(id);
-            product.setBlueprintTypeID(products.getBlueprinttypeid());
+            product.setBlueprintTypeID(products.getTypeid());
             product.setFlowQuantity(products.getQuantity());
             ret.put(id, product);
         }
@@ -187,16 +187,16 @@ public class IndustryService extends ServiceBase {
 
     private Map<String, Integer> getMaterialCountMap(Map<Integer, Integer> typeIDCountMap) {
         Map<Integer, Integer> materialTypeMap = new HashMap<>();
-        IndustryActivityMaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
+        IndustryactivitymaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
         Iterator<Integer> iter = typeIDCountMap.keySet().iterator();
         while (iter.hasNext()) {
             Integer id = iter.next();
             Integer blueCnt = typeIDCountMap.get(id);
-            IndustryActivityMaterialsExample example = new IndustryActivityMaterialsExample();
-            example.createCriteria().andBlueprinttypeidEqualTo(id).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING);
-            List<IndustryActivityMaterials> materialsList = materialsMapper.selectByExample(example);
+            IndustryactivitymaterialsExample example = new IndustryactivitymaterialsExample();
+            example.createCriteria().andTypeidEqualTo(id).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING);
+            List<Industryactivitymaterials> materialsList = materialsMapper.selectByExample(example);
             for(int i = 0; i < blueCnt; i++) {
-                for (IndustryActivityMaterials materials : materialsList) {
+                for (Industryactivitymaterials materials : materialsList) {
                     Integer count = materialTypeMap.get(materials.getMaterialtypeid());
                     if(count == null) {
                         count = 0;
@@ -221,16 +221,16 @@ public class IndustryService extends ServiceBase {
 
     private Map<Integer, Integer> getBlueprintCountMap(Map<Integer, Integer> productIDMap) {
         Map<Integer, Integer> typeIDCountMap = new HashMap<>();
-        IndustryActivityProductsMapper productsMapper = getIndustryActivityProductsMapper();
+        IndustryactivityproductsMapper productsMapper = getIndustryActivityProductsMapper();
         Iterator<Integer> iter = productIDMap.keySet().iterator();
         while(iter.hasNext()) {
             Integer id = iter.next();
-            IndustryActivityProductsExample example = new IndustryActivityProductsExample();
+            IndustryactivityproductsExample example = new IndustryactivityproductsExample();
             example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andProducttypeidEqualTo(id);
-            IndustryActivityProducts product = productsMapper.selectByExample(example).get(0);
+            Industryactivityproducts product = productsMapper.selectByExample(example).get(0);
             Integer productCnt = productIDMap.get(id);
             BigDecimal blueprintCnt = NumberUtil.div(new BigDecimal(productCnt), new BigDecimal(product.getQuantity()), 0, RoundingMode.UP);
-            typeIDCountMap.put(product.getBlueprinttypeid(), blueprintCnt.intValue());
+            typeIDCountMap.put(product.getTypeid(), blueprintCnt.intValue());
         }
         return typeIDCountMap;
     }

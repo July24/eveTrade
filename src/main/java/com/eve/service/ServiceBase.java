@@ -7,6 +7,7 @@ import com.eve.dao.*;
 import com.eve.entity.EveOrder;
 import com.eve.entity.database.*;
 import com.eve.util.PrjConst;
+import com.eve.util.TradeUtil;
 import org.apache.ibatis.io.Resources;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -20,7 +21,7 @@ public class ServiceBase {
     private static SqlSession sqlSession;
 
     protected HttpResponse sendGetRequest(String url, Map<String, Object> paramMap) {
-        return HttpRequest.get(url).form(paramMap).execute();
+        return TradeUtil.sendGetRequest(url, paramMap);
     }
 
     protected String replaceBraces(String url, String replace) {
@@ -89,27 +90,15 @@ public class ServiceBase {
         return sqlSession.getMapper(ItemsMapper.class);
     }
 
-    protected IndustryActivitiesMapper getIndustryActivitiesMapper() {
-        return sqlSession.getMapper(IndustryActivitiesMapper.class);
+    protected IndustryactivitymaterialsMapper getIndustryActivityMaterialsMapper() {
+        return sqlSession.getMapper(IndustryactivitymaterialsMapper.class);
     }
 
-    protected IndustryActivityMaterialsMapper getIndustryActivityMaterialsMapper() {
-        return sqlSession.getMapper(IndustryActivityMaterialsMapper.class);
+    protected IndustryactivityproductsMapper getIndustryActivityProductsMapper() {
+        return sqlSession.getMapper(IndustryactivityproductsMapper.class);
     }
 
-    protected IndustryActivityProductsMapper getIndustryActivityProductsMapper() {
-        return sqlSession.getMapper(IndustryActivityProductsMapper.class);
-    }
-
-    protected IndustryActivitySkillsMapper getIndustryActivitySkillsMapper() {
-        return sqlSession.getMapper(IndustryActivitySkillsMapper.class);
-    }
-
-    protected IndustryBlueprintsMapper getIndustryBlueprintsMapper() {
-        return sqlSession.getMapper(IndustryBlueprintsMapper.class);
-    }
-
-    protected MarketgroupsMapper getMarketgroupsMapper() {
-        return sqlSession.getMapper(MarketgroupsMapper.class);
+    protected InvmarketgroupsMapper getMarketgroupsMapper() {
+        return sqlSession.getMapper(InvmarketgroupsMapper.class);
     }
 }

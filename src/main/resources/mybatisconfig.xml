@@ -19,11 +19,9 @@
         </environment>
     </environments>
     <mappers>
+        <mapper resource="mapper/IndustryactivitymaterialsMapper.xml"/>
+        <mapper resource="mapper/IndustryactivityproductsMapper.xml"/>
+        <mapper resource="mapper/InvmarketgroupsMapper.xml"/>
         <mapper resource="mapper/ItemsMapper.xml"/>
-        <mapper resource="mapper/IndustryActivitiesMapper.xml"/>
-        <mapper resource="mapper/IndustryActivityMaterialsMapper.xml"/>
-        <mapper resource="mapper/IndustryActivityProductsMapper.xml"/>
-        <mapper resource="mapper/IndustryActivitySkillsMapper.xml"/>
-        <mapper resource="mapper/IndustryBlueprintsMapper.xml"/>
     </mappers>
 </configuration>
