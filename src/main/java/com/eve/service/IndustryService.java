@@ -1,5 +1,7 @@
 package com.eve.service;
 
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
@@ -7,12 +9,13 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.eve.dao.IndustryactivitymaterialsMapper;
 import com.eve.dao.IndustryactivityproductsMapper;
+import com.eve.dao.InvmarketgroupsMapper;
 import com.eve.dao.ItemsMapper;
-import com.eve.entity.AuthAccount;
-import com.eve.entity.EveOrder;
-import com.eve.entity.IndustryProduct;
+import com.eve.entity.*;
 import com.eve.entity.database.*;
+import com.eve.util.DBConst;
 import com.eve.util.PrjConst;
+import com.eve.util.TradeUtil;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -30,19 +33,106 @@ public class IndustryService extends ServiceBase {
         productMap.put("Phased Plasma M",15000);
         productMap.put("Fusion M",15000);
 //        productMap.put("425mm AutoCannon I",10);
-        is.getListNeedMaterial(productMap);
-//        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
-//        is.getManufacturingList(account, 0.3);
+//        is.getListNeedMaterial(productMap);
+        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
+        is.getManufacturingList(account, 0.2);
+//        is.getBlueprintBuyList();
+    }
+
+    private void getBlueprintBuyList() throws IOException {
+        List<Integer> allRigsMG = getAllRigsMarketGroup();
+        ItemsMapper itemsMapper = getItemsMapper();
+        List<Items> allRigsItem = getAllRigsItem(allRigsMG, itemsMapper);
+
+        List<CharBlueprint> ownBpID = getOwnBlueprint();
+        List<Integer> blueIDList = getBlueIDList(ownBpID);
+        List<Integer> manuTypeIDList =  getCanManuTypeID(blueIDList);
+        List<OrderParseResult> orderParseResults = filterRigsVolume(allRigsItem, manuTypeIDList);
+        outBlueprintBuyList(orderParseResults);
+    }
+
+    private void outBlueprintBuyList(List<OrderParseResult> orderParseResults) throws IOException {
+        File file = new File("result/industry/blueprintBuyList");
+        FileWriter writer = new FileWriter(file);
+
+        orderParseResults.sort(new Comparator<OrderParseResult>() {
+            @Override
+            public int compare(OrderParseResult o1, OrderParseResult o2) {
+                return BigDecimal.valueOf(o2.getDailySalesVolume() * 100 - o1.getDailySalesVolume() * 100).intValue();
+            }
+        });
+        for (OrderParseResult result : orderParseResults) {
+            String enName = result.getItem().getEnName();
+            StringBuilder sb = new StringBuilder();
+            sb.append(enName);
+            sb.append("\t");
+            sb.append(NumberUtil.round(result.getDailySalesVolume(), 0, RoundingMode.UP));
+            writer.write(sb.toString());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private List<OrderParseResult> filterRigsVolume(List<Items> allRigsItem, List<Integer> manuTypeIDList) {
+        List<OrderParseResult> ret = new ArrayList<>();
+        for(Items rig : allRigsItem) {
+            System.out.println("计算ID：" + rig.getId());
+            if(manuTypeIDList.contains(rig.getId())) {
+                continue;
+            }
+            OrderParseResult orderParseResult = new OrderParseResult();
+            orderParseResult.setDailySalesVolume(TradeUtil.getDailyVolume(rig.getId()));
+            orderParseResult.setItem(rig);
+            ret.add(orderParseResult);
+        }
+        return ret;
+    }
+
+    private List<Integer> getBlueIDList(List<CharBlueprint> ownBpID) {
+        List<Integer> list = new ArrayList<>();
+        for(CharBlueprint blueprint : ownBpID) {
+            list.add(blueprint.getTypeId());
+        }
+        return list;
+    }
+
+    private List<Items> getAllRigsItem(List<Integer> allRigsMG, ItemsMapper itemsMapper) {
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andMarketgroupidIn(allRigsMG).andMetagroupidIsNull();
+        return itemsMapper.selectByExample(example);
+    }
+
+    private List<Integer> getAllRigsMarketGroup() {
+        List<Integer> allSub = new ArrayList<>();
+        InvmarketgroupsMapper mapper = getMarketgroupsMapper();
+        InvmarketgroupsExample example = new InvmarketgroupsExample();
+        example.createCriteria().andParentgroupidEqualTo(DBConst.MARKET_GROUP_TYPE_RIGS);
+        List<Invmarketgroups> invmarketgroups = mapper.selectByExample(example);
+        List<Integer> second = new ArrayList<>();
+        for(Invmarketgroups invmarketgroup : invmarketgroups) {
+            second.add(invmarketgroup.getMarketgroupid());
+        }
+        InvmarketgroupsExample another = new InvmarketgroupsExample();
+        another.createCriteria().andParentgroupidIn(second);
+        List<Invmarketgroups> sub = mapper.selectByExample(another);
+        for(Invmarketgroups invmarketgroup : sub) {
+            allSub.add(invmarketgroup.getMarketgroupid());
+        }
+        return allSub;
     }
 
     public void getManufacturingList(AuthAccount rfAccount,
                                      double hopeMargin) throws Exception {
-        //TODO 减去库存
+        Map<Integer, List<EveOrder>> myOrder = getMyOrder(rfAccount);
+        List<AssertItem> anAssert = getAssert(rfAccount);
+        List<AssertItem> rfAssert = filterRFAssert(anAssert, new ArrayList<>(),
+                PrjConst.STATION_ID_RF_WINTERCO);
         ItemsMapper itemsMapper = getItemsMapper();
         Map<Integer, IndustryProduct> productMap = getProductIDList();
         assembleStationPrice(rfAccount, productMap);
         assemblePurchasePrice(productMap, itemsMapper);
-        filterMargin(productMap, hopeMargin);
+        filterMargin(productMap, hopeMargin, myOrder, rfAssert);
         outRecommendedManufacturing(productMap, itemsMapper);
     }
 
@@ -52,16 +142,21 @@ public class IndustryService extends ServiceBase {
         Iterator<Integer> iter = productMap.keySet().iterator();
         while (iter.hasNext()) {
             Integer id = iter.next();
+            IndustryProduct industryProduct = productMap.get(id);
             StringBuilder sb = new StringBuilder();
             sb.append(itemsMapper.selectByPrimaryKey(id).getEnName());
             writer.write(sb.toString());
+            writer.write("\t");
+            writer.write("x");
+            writer.write(new BigDecimal(industryProduct.getDailyVolume() * 4).toString());
             writer.write("\r\n");
         }
         writer.flush();
         writer.close();
     }
 
-    private void filterMargin(Map<Integer, IndustryProduct> productMap, double hopeMargin) {
+    private void filterMargin(Map<Integer, IndustryProduct> productMap, double hopeMargin, Map<Integer,
+            List<EveOrder>> myOrder, List<AssertItem> rfAssert) {
         Iterator<Integer> iter = productMap.keySet().iterator();
         while(iter.hasNext()) {
             Integer id = iter.next();
@@ -72,7 +167,38 @@ public class IndustryService extends ServiceBase {
             if(margin < hopeMargin) {
                 iter.remove();
             }
+            //TODO 此处如何分开无销量的和自己货物充足的？
+            int recCnt = new BigDecimal(product.getDailyVolume() * 4).intValue() - getOrderCnt(id, myOrder) - getAssertCnt(id, rfAssert);
+            if(recCnt <= 0) {
+                iter.remove();
+            }
+            product.setRecommendCount(recCnt);
         }
+    }
+
+    private int getOrderCnt(Integer id, Map<Integer, List<EveOrder>> myOrder) {
+        List<EveOrder> orderList = myOrder.get(id);
+        int ret = 0;
+        if(orderList != null) {
+            for(EveOrder eveOrder : orderList) {
+                if(eveOrder.getTypeId() == id) {
+                    ret += eveOrder.getVolumeRemain();
+                }
+            }
+        }
+        return ret;
+    }
+
+    private int getAssertCnt(Integer id, List<AssertItem> rfAssert) {
+        int ret = 0;
+        if(rfAssert != null) {
+            for(AssertItem item : rfAssert) {
+                if(item.getTypeId() == id) {
+                    ret += item.getQuantity();
+                }
+            }
+        }
+        return ret;
     }
 
     private void assemblePurchasePrice(Map<Integer, IndustryProduct> productMap, ItemsMapper itemsMapper) {
@@ -125,19 +251,24 @@ public class IndustryService extends ServiceBase {
             Integer id = iter.next();
             List<EveOrder> eveOrders = orderMap.get(id);
             double stationPrice = Integer.MAX_VALUE;
-            for(EveOrder order : eveOrders) {
-                if(order.isBuyOrder()) {
-                    continue;
-                }
-                if(!order.getLocationId().equals(PrjConst.STATION_ID_RF_WINTERCO)) {
-                    continue;
-                }
-                double price = order.getPrice();
-                if(price < stationPrice) {
-                    stationPrice = price;
+            if(eveOrders != null) {
+                for(EveOrder order : eveOrders) {
+                    if(order.isBuyOrder()) {
+                        continue;
+                    }
+                    if(!order.getLocationId().equals(PrjConst.STATION_ID_RF_WINTERCO)) {
+                        continue;
+                    }
+                    double price = order.getPrice();
+                    if(price < stationPrice) {
+                        stationPrice = price;
+                    }
                 }
             }
-            productMap.get(id).setStationPrice(stationPrice);
+            IndustryProduct industryProduct = productMap.get(id);
+            industryProduct.setStationPrice(stationPrice);
+            double dailyVolume = TradeUtil.getDailyVolume(id);
+            industryProduct.setDailyVolume(NumberUtil.round(dailyVolume, 0, RoundingMode.UP).intValue());
         }
     }
 
@@ -147,7 +278,10 @@ public class IndustryService extends ServiceBase {
                 getIndustryActivityProductsMapper();
         IndustryactivityproductsExample example =
                 new IndustryactivityproductsExample();
-        example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andTypeidIn(new ArrayList<>(Arrays.asList(PrjConst.OWN_BLUEPRINT)));
+
+        List<CharBlueprint> ownBpID = getOwnBlueprint();
+        List<Integer> fullIDList = getFullResearchIDList(ownBpID);
+        example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andTypeidIn(fullIDList);
         List<Industryactivityproducts> industryActivityProducts = productsMapper.selectByExample(example);
         for(Industryactivityproducts products : industryActivityProducts) {
             Integer id = products.getProducttypeid();

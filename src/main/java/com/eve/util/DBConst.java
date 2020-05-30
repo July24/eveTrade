@@ -18,4 +18,8 @@ public class DBConst {
     public static final int MARKET_GROUP_ROOT_SHIP_SKINS = 1954;
     public static final int MARKET_GROUP_ROOT_STRUCTURE_EQUIPMENT = 2202;
     public static final int MARKET_GROUP_ROOT_STRUCTURE_MODIFICATIONS = 2203;
+
+
+    public static final int MARKET_GROUP_TYPE_RIGS = 1111;
+
 }

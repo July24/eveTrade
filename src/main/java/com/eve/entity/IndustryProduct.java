@@ -10,4 +10,6 @@ public class IndustryProduct {
     private double PurchasePrice;
     private int flowQuantity;
     private double StationPrice;
+    private int dailyVolume;
+    private int recommendCount;
 }

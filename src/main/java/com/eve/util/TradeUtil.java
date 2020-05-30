@@ -1,6 +1,8 @@
 package com.eve.util;
 
 
+import cn.hutool.core.date.DateTime;
+import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.http.HttpException;
 import cn.hutool.http.HttpRequest;
@@ -164,6 +166,37 @@ public class TradeUtil {
                 i++;
             }
         }
+    }
+
+    public static double getDailyVolume(int typeID) {
+        int getCnt = 0;
+        while(getCnt < 3) {
+            Map<String, Object> paramMap = new HashMap<>();
+            paramMap.put("datasource", PrjConst.DATASOURCE);
+            paramMap.put("type_id", typeID);
+            HttpResponse httpResponse =
+                    TradeUtil.sendGetRequest(TradeUtil.replaceBraces(PrjConst.ORDER_HISTORY_URL,
+                            PrjConst.REGION_ID_OASA), paramMap);
+            int status = httpResponse.getStatus();
+            if(status != 200) {
+                getCnt++;
+                continue;
+            }
+            List<OrderHistory> orderHistories = JSON.parseArray(httpResponse.body(), OrderHistory.class);
+            int size = orderHistories.size();
+            Date endDate = new Date();
+            DateTime bgnDate = DateUtil.offsetDay(endDate, -8);
+            double sum = 0;
+            for(int i = size - 1; i >= 0; i--) {
+                OrderHistory orderHistory = orderHistories.get(i);
+                Date date = orderHistory.getDate();
+                if(date.before(endDate) && date.after(bgnDate)) {
+                    sum += orderHistory.getVolume();
+                }
+            }
+            return sum/7;
+        }
+        return 0;
     }
 
     public static String replaceBraces(String url, String replace) {
