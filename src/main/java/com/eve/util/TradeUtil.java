@@ -3,6 +3,7 @@ package com.eve.util;
 
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
+import cn.hutool.core.io.IORuntimeException;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.http.HttpException;
 import cn.hutool.http.HttpRequest;
@@ -159,7 +160,7 @@ public class TradeUtil {
         while (true) {
             try {
                 return HttpRequest.get(url).form(paramMap).execute();
-            } catch (HttpException e) {
+            } catch (Exception e) {
                 if(i >= 3) {
                     throw e;
                 }
