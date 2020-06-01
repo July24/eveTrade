@@ -54,9 +54,9 @@
             <property name="enableSubPackages" value="true" />
         </javaClientGenerator>
 
-<!--        <table schema="sde" tableName="items"/>-->
-        <table schema="sde" tableName="industryActivityMaterials"/>
-        <table schema="sde" tableName="industryActivityProducts"/>
+        <table schema="sde" tableName="items"/>
+        <table schema="sde" tableName="industryactivitymaterials"/>
+        <table schema="sde" tableName="industryactivityproducts"/>
         <table schema="sde" tableName="invmarketgroups"/>
     </context>
 </generatorConfiguration>

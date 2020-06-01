@@ -31,8 +31,8 @@ public class BusinessService extends ServiceBase {
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
         AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
                 PrjConst.LEAH_REFRESH_TOKEN);
-//        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
-//                3, 0.2, true);
+        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
+                3, 0.1, true);
 //        bs.getChangeItemList(account);
 //        bs.getForgeBuyChangeItemList(jitaAccount);
 
@@ -43,7 +43,7 @@ public class BusinessService extends ServiceBase {
         exclude.add(648);
         exclude.add(649);
         exclude.add(16242);
-        bs.getRfRelistItem(account, exclude);
+//        bs.getRfRelistItem(account, exclude);
 
     }
 
@@ -480,6 +480,7 @@ public class BusinessService extends ServiceBase {
             }
         });
 
+        DecimalFormat df = new DecimalFormat( "#,###.00");
         List<Map.Entry<Integer,OrderParseResult>> bpManuList = new ArrayList<>();
         List<Map.Entry<Integer,OrderParseResult>> bigVolList = new ArrayList<>();
         for (Map.Entry<Integer,OrderParseResult> item : list) {
@@ -493,7 +494,7 @@ public class BusinessService extends ServiceBase {
                 bigVolList.add(item);
                 continue;
             }
-            String record = getPurchaseRecord(orderParseResult);
+            String record = getPurchaseRecord(orderParseResult, df);
             writer.write(record);
             writer.write("\r\n");
         }
@@ -542,13 +543,15 @@ public class BusinessService extends ServiceBase {
         return sb.toString();
     }
 
-    private String getPurchaseRecord(OrderParseResult orderParseResult) {
+    private String getPurchaseRecord(OrderParseResult orderParseResult, DecimalFormat df) {
         StringBuilder sb = new StringBuilder();
         sb.append(orderParseResult.getItem().getEnName());
         sb.append(" x");
-        sb.append(orderParseResult.getRecommendedCount());
+        int count = orderParseResult.getRecommendedCount();
+        sb.append(count);
         sb.append("\t");
-        sb.append(orderParseResult.getStatisticData().getProfit());
+        int profit = orderParseResult.getStatisticData().getProfit();
+        sb.append(df.format(profit));
         sb.append("\t");
         sb.append(orderParseResult.getStatisticData().getProfitMargin());
         sb.append("\t");
@@ -559,6 +562,8 @@ public class BusinessService extends ServiceBase {
         } else {
             sb.append("false");
         }
+        sb.append("\t");
+        sb.append(df.format(count * profit));
         return sb.toString();
     }
 

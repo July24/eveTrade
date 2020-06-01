@@ -28,13 +28,16 @@ public class IndustryService extends ServiceBase {
     private static double MATERIAL_RESEARCH = 0.1;
 
     public static void main(String[] args) throws Exception {
+        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
+        AuthAccount sanjiAccount = new AuthAccount(PrjConst.SANJI_CHAR_ID, PrjConst.SANJI_CHAR_NAME,
+                PrjConst.SANJI_REFRESH_TOKEN);
+
         IndustryService is = new IndustryService();
         Map<String, Integer> productMap = new HashMap<>();
-        productMap.put("Phased Plasma M",15000);
-        productMap.put("Fusion M",15000);
+        productMap.put("Small Salvage Tackle I",20);
+//        productMap.put("Fusion M",15000);
 //        productMap.put("425mm AutoCannon I",10);
-//        is.getListNeedMaterial(productMap);
-        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
+//        is.getListNeedMaterial(productMap, sanjiAccount);
         is.getManufacturingList(account, 0.2);
 //        is.getBlueprintBuyList();
     }
@@ -294,12 +297,26 @@ public class IndustryService extends ServiceBase {
         return ret;
     }
 
-    public void getListNeedMaterial(Map<String, Integer> productMap) throws Exception {
+    public void getListNeedMaterial(Map<String, Integer> productMap, AuthAccount materialAccount) throws Exception {
         Map<Integer, Integer> productIDMap = getProductIDMap(productMap);
         Map<Integer, Integer> typeIDCountMap = getBlueprintCountMap(productIDMap);
-        Map<String, Integer> materialCountMap = getMaterialCountMap(typeIDCountMap);
+        Map<String, Integer> materialCountMap = getMaterialCountMap(typeIDCountMap, materialAccount);
         outNeedMaterialCount(materialCountMap);
     }
+
+    private Map<Integer, Integer> getAssertMap(List<AssertItem> anAssert) {
+        Map<Integer, Integer> map = new HashMap<>();
+        for(AssertItem item : anAssert) {
+            Integer integer = map.get(item.getTypeId());
+            if(integer == null) {
+                integer = 0;
+            }
+            integer += item.getQuantity();
+            map.put(item.getTypeId(), integer);
+        }
+        return map;
+    }
+
 
     private void outNeedMaterialCount(Map<String, Integer> materialCountMap) throws IOException {
         File file = new File("result/industry/needMaterialCount");
@@ -319,7 +336,9 @@ public class IndustryService extends ServiceBase {
         writer.close();
     }
 
-    private Map<String, Integer> getMaterialCountMap(Map<Integer, Integer> typeIDCountMap) {
+    private Map<String, Integer> getMaterialCountMap(Map<Integer, Integer> typeIDCountMap, AuthAccount materialAccount) throws Exception {
+        List<AssertItem> anAssert = getAssert(materialAccount);
+        Map<Integer, Integer> assertMap = getAssertMap(anAssert);
         Map<Integer, Integer> materialTypeMap = new HashMap<>();
         IndustryactivitymaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
         Iterator<Integer> iter = typeIDCountMap.keySet().iterator();
@@ -348,7 +367,16 @@ public class IndustryService extends ServiceBase {
             Integer count = materialTypeMap.get(id);
             Items items = itemsMapper.selectByPrimaryKey(id);
             BigDecimal mul = NumberUtil.mul(new BigDecimal(count), new BigDecimal(1.0-MATERIAL_RESEARCH));
-            ret.put(items.getEnName(), NumberUtil.round(mul, 0 ,RoundingMode.UP).intValue());
+            //TODO 6%建筑插 以后改为传入
+            mul = NumberUtil.mul(mul, new BigDecimal(0.94));
+            Integer ownCnt = assertMap.get(id);
+            if(ownCnt != null) {
+                mul = NumberUtil.sub(mul, ownCnt);
+            }
+            int needCount = NumberUtil.round(mul, 0, RoundingMode.UP).intValue();
+            if(needCount > 0) {
+                ret.put(items.getEnName(), needCount);
+            }
         }
         return ret;
     }
