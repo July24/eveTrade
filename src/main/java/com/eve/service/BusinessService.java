@@ -33,7 +33,7 @@ public class BusinessService extends ServiceBase {
                 PrjConst.LEAH_REFRESH_TOKEN);
         bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
                 3, 0.1, true);
-//        bs.getChangeItemList(account);
+        bs.getChangeItemList(account);
 //        bs.getForgeBuyChangeItemList(jitaAccount);
 
 //        bs.parseStationExportMarket(account, PrjConst.STATION_ID_RF_WINTERCO);
@@ -43,7 +43,7 @@ public class BusinessService extends ServiceBase {
         exclude.add(648);
         exclude.add(649);
         exclude.add(16242);
-//        bs.getRfRelistItem(account, exclude);
+        bs.getRfRelistItem(account, exclude);
 
     }
 
@@ -234,7 +234,7 @@ public class BusinessService extends ServiceBase {
                 if(order.isBuyOrder()) {
                     continue;
                 }
-                if(Double.valueOf(order.getPrice()) < myPrice) {
+                if(order.getPrice() < myPrice) {
                     changeList.add(order.getTypeId());
                     break;
                 }
@@ -326,7 +326,7 @@ public class BusinessService extends ServiceBase {
         HashMap<Integer, Integer> rfInventory = getWarehouseMap(account, PrjConst.STATION_ID_RF_WINTERCO);
         HashMap<Integer, Integer> selfOrderMap = getSelfSellOrderRemainMap(account, PrjConst.STATION_ID_RF_WINTERCO);
 
-        ForkJoinPool pool = new ForkJoinPool();
+        ForkJoinPool pool = new ForkJoinPool(128);
         ParseMarketTask task = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, orderMap, itemMap,
                 flowFilter, hopeRoi);
         pool.invoke(task);

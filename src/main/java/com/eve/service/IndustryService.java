@@ -33,12 +33,17 @@ public class IndustryService extends ServiceBase {
                 PrjConst.SANJI_REFRESH_TOKEN);
 
         IndustryService is = new IndustryService();
-        Map<String, Integer> productMap = new HashMap<>();
-        productMap.put("Small Salvage Tackle I",20);
+//        Map<String, Integer> productMap = new HashMap<>();
+//        productMap.put("Proton M",114288);
 //        productMap.put("Fusion M",15000);
 //        productMap.put("425mm AutoCannon I",10);
 //        is.getListNeedMaterial(productMap, sanjiAccount);
-        is.getManufacturingList(account, 0.2);
+        String productStr = "Small Memetic Algorithm Bank I\t8\n" +
+                "Medium Capacitor Control Circuit I\t120\n" +
+                "Medium Cargohold Optimization I\t96\n" +
+                "Large Hyperspatial Velocity Optimizer I\t12";
+        is.getListNeedMaterial(productStr, sanjiAccount);
+//        is.getManufacturingList(account, 0.1);
 //        is.getBlueprintBuyList();
     }
 
@@ -150,7 +155,7 @@ public class IndustryService extends ServiceBase {
             sb.append(itemsMapper.selectByPrimaryKey(id).getEnName());
             writer.write(sb.toString());
             writer.write("\t");
-            writer.write("x");
+//            writer.write("x");
             writer.write(new BigDecimal(industryProduct.getDailyVolume() * 4).toString());
             writer.write("\r\n");
         }
@@ -225,7 +230,7 @@ public class IndustryService extends ServiceBase {
             Items item = itemsMapper.selectByPrimaryKey(material.getMaterialtypeid());
             sb.append(item.getEnName());
             sb.append(" ");
-            BigDecimal realCnt = NumberUtil.round(material.getQuantity() * (1 - MATERIAL_RESEARCH)
+            BigDecimal realCnt = NumberUtil.round(material.getQuantity() * (1 - MATERIAL_RESEARCH) * 0.94
                     , 0, RoundingMode.UP);
             sb.append(realCnt.intValue());
             sb.append("\n");
@@ -295,6 +300,21 @@ public class IndustryService extends ServiceBase {
             ret.put(id, product);
         }
         return ret;
+    }
+
+    public void getListNeedMaterial(String productStr, AuthAccount materialAccount) throws Exception {
+        Map<String, Integer> productMap = parseProductStr(productStr);
+        getListNeedMaterial(productMap, materialAccount);
+    }
+
+    private Map<String, Integer> parseProductStr(String productStr) {
+        Map<String, Integer> map = new HashMap<>();
+        String[] records = productStr.split("\n");
+        for(String record : records) {
+            String[] split = record.split("\t");
+            map.put(split[0], Integer.parseInt(split[1]));
+        }
+        return map;
     }
 
     public void getListNeedMaterial(Map<String, Integer> productMap, AuthAccount materialAccount) throws Exception {
