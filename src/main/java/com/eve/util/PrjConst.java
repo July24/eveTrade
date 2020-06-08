@@ -58,4 +58,20 @@ public class PrjConst {
     public static final int BLUEPRINT_ACTIVITY_TYPE_RESEARCH_MATERIAL = 3;
     public static final int BLUEPRINT_ACTIVITY_TYPE_RESEARCH_TIME = 4;
     public static final int BLUEPRINT_ACTIVITY_TYPE_INVENTION = 8;
+
+    public static final double INVENTION_BASE_MODULES_RIGS_AMMO = 0.34;
+
+    public static final int INVENTION_BPC_DFT_RUNS_SHIP_RIG = 1;
+    public static final int INVENTION_BPC_DFT_RUNS_OTHER = 10;
+    public static final double INVENTION_BPC_DFT_ME = 0.02;
+    public static final double INVENTION_BPC_DFT_TE = 0.04;
+
+
+    public static final double INVENTION_RIG_SUCCESS_L4 = 0.4647;
+    public static final double INVENTION_RIG_SUCCESS_AUGMENTATION_L4 = 0.2788;
+    public static final double INVENTION_RIG_SUCCESS_L3 = 0.4335;
+    public static final double INVENTION_RIG_SUCCESS_AUGMENTATION_L3 = 0.2601;
+
+    public static final int DECRYPTOR_AUGMENTATION_ID = 34203;
+
 }

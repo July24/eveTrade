@@ -1,7 +1,5 @@
 package com.eve.service;
 
-import cn.hutool.core.date.DateTime;
-import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
@@ -16,6 +14,7 @@ import com.eve.entity.database.*;
 import com.eve.util.DBConst;
 import com.eve.util.PrjConst;
 import com.eve.util.TradeUtil;
+import io.swagger.models.auth.In;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -26,6 +25,7 @@ import java.util.*;
 
 public class IndustryService extends ServiceBase {
     private static double MATERIAL_RESEARCH = 0.1;
+    private static double T2_MATERIAL_RESEARCH = 0.01;
 
     public static void main(String[] args) throws Exception {
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
@@ -38,13 +38,138 @@ public class IndustryService extends ServiceBase {
 //        productMap.put("Fusion M",15000);
 //        productMap.put("425mm AutoCannon I",10);
 //        is.getListNeedMaterial(productMap, sanjiAccount);
-        String productStr = "Small Memetic Algorithm Bank I\t8\n" +
-                "Medium Capacitor Control Circuit I\t120\n" +
-                "Medium Cargohold Optimization I\t96\n" +
-                "Large Hyperspatial Velocity Optimizer I\t12";
-        is.getListNeedMaterial(productStr, sanjiAccount);
-//        is.getManufacturingList(account, 0.1);
+//        String productStr = "Medium Core Defense Field Extender II\t116\n" +
+//                 "Medium Capacitor Control Circuit II\t113\n" +
+//                "Small Core Defense Field Extender II\t60\n" +
+//                "Small Hyperspatial Velocity Optimizer II\t60\n" +
+//                "Medium Anti-EM Screen Reinforcer II\t56";
+//        is.getListNeedMaterial(productStr, sanjiAccount);
+//        is.getManufacturingList(account, 0.1, true);
 //        is.getBlueprintBuyList();
+
+
+        //---------发明流程-----------
+        String t2ProductStr = "Medium Core Defense Field Extender II\t116\n" +
+                "Medium Capacitor Control Circuit II\t113\n" +
+                "Small Core Defense Field Extender II\t60\n" +
+                "Small Hyperspatial Velocity Optimizer II\t60\n" +
+                "Medium Anti-EM Screen Reinforcer II\t56";
+        is.getT2CopyCount(t2ProductStr);
+//        String t1BPCProductStr = "Medium Anti-EM Screen Reinforcer I Blueprint\t24\n" +
+//                "Small Hyperspatial Velocity Optimizer I Blueprint\t24\n" +
+//                "Medium Capacitor Control Circuit I Blueprint\t48\n" +
+//                "Small Core Defense Field Extender I Blueprint\t24\n" +
+//                "Medium Core Defense Field Extender I Blueprint\t48";
+//        is.t2InventionMaterial(t1BPCProductStr);
+        is.getListNeedMaterial(t2ProductStr, sanjiAccount);
+    }
+
+    private void t2InventionMaterial(String productStr) throws Exception {
+        Map<String, Integer> productMap = parseProductStr(productStr);
+        Map<Integer, Integer> productIDMap = getProductIDMap(productMap);
+        Map<Integer, Integer> materialMap = getInventionMaterial(productIDMap);
+        Map<Integer, Items> itemMap = getItemMap(getItemsMapper(), new ArrayList<>(materialMap.keySet()));
+        outInventionMaterial(materialMap, itemMap);
+    }
+
+    private void outInventionMaterial(Map<Integer, Integer> productMap, Map<Integer, Items> itemMap) throws IOException {
+        File file = new File("result/industry/inventionMaterial");
+        FileWriter writer = new FileWriter(file);
+        Iterator<Integer> iter = productMap.keySet().iterator();
+        while (iter.hasNext()) {
+            Integer id = iter.next();
+            Integer count = productMap.get(id);
+            StringBuilder sb = new StringBuilder();
+            Items items = itemMap.get(id);
+            sb.append(items.getEnName());
+            sb.append("\t");
+            sb.append(count);
+            writer.write(sb.toString());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private Map<Integer, Integer> getInventionMaterial(Map<Integer, Integer> productIDMap) {
+        Map<Integer, Integer> map = new HashMap<>();
+        IndustryactivitymaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
+        Iterator<Integer> iter = productIDMap.keySet().iterator();
+        int decryptorCnt = 0;
+        while (iter.hasNext()) {
+            Integer id = iter.next();
+            Integer inventionCnt = productIDMap.get(id);
+            IndustryactivitymaterialsExample example = new IndustryactivitymaterialsExample();
+            example.createCriteria().andTypeidEqualTo(id).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_INVENTION);
+            List<Industryactivitymaterials> materials = materialsMapper.selectByExample(example);
+            for(Industryactivitymaterials material : materials) {
+                Integer materialID = material.getMaterialtypeid();
+                Integer quantity = material.getQuantity();
+                Integer count = map.get(materialID);
+                if(count == null) {
+                    count = 0;
+                }
+                count += (quantity * inventionCnt);
+                map.put(materialID, count);
+            }
+            decryptorCnt += inventionCnt;
+        }
+        map.put(PrjConst.DECRYPTOR_AUGMENTATION_ID, decryptorCnt);
+        return map;
+    }
+
+    private void getT2CopyCount(String productStr) throws Exception {
+        Map<String, Integer> productMap = parseProductStr(productStr);
+
+        Map<Integer, Integer> productIDMap = getProductIDMap(productMap);
+        Map<Integer, Integer> t1BPMap = getT1BPMap(productIDMap);
+        Map<Integer, Items> itemMap = getItemMap(getItemsMapper(), new ArrayList<>(t1BPMap.keySet()));
+        outCopyCount(t1BPMap, itemMap);
+    }
+
+    private Map<Integer, Integer> getT1BPMap(Map<Integer, Integer> productIDMap) {
+        IndustryactivityproductsMapper productsMapper = getIndustryActivityProductsMapper();
+        IndustryactivityproductsExample example = new IndustryactivityproductsExample();
+        example.createCriteria().andProducttypeidIn(new ArrayList<>(productIDMap.keySet()));
+        List<Industryactivityproducts> industryactivityproducts = productsMapper.selectByExample(example);
+        Map<Integer, Integer> t2BP = new HashMap<>();
+        for(Industryactivityproducts product : industryactivityproducts) {
+            t2BP.put(product.getTypeid(), productIDMap.get(product.getProducttypeid()));
+        }
+        IndustryactivityproductsExample another = new IndustryactivityproductsExample();
+        another.createCriteria().andProducttypeidIn(new ArrayList<>(t2BP.keySet())).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_INVENTION);
+        List<Industryactivityproducts> inventionProducts = productsMapper.selectByExample(another);
+        Map<Integer, Integer> map = new HashMap<>();
+        for(Industryactivityproducts product : inventionProducts) {
+
+            map.put(product.getTypeid(), t2BP.get(product.getProducttypeid()));
+        }
+        return map;
+    }
+
+    private void outCopyCount(Map<Integer, Integer> productMap, Map<Integer, Items> itemMap) throws IOException {
+        File file = new File("result/industry/copyCount");
+        BigDecimal avgSuc = BigDecimal.valueOf(NumberUtil.div(1, PrjConst.INVENTION_RIG_SUCCESS_AUGMENTATION_L4));
+        avgSuc = NumberUtil.round(avgSuc, 0, RoundingMode.UP);
+
+        FileWriter writer = new FileWriter(file);
+        Iterator<Integer> iter = productMap.keySet().iterator();
+        while (iter.hasNext()) {
+            Integer bpID = iter.next();
+            Integer count = productMap.get(bpID);
+            BigDecimal cnt = new BigDecimal(count).divide(new BigDecimal(1 + DECRYPTOR.Augmentation.Runs));
+            cnt = NumberUtil.round(cnt, 0, RoundingMode.UP);
+            BigDecimal copyCnt = avgSuc.multiply(cnt);
+            StringBuilder sb = new StringBuilder();
+            Items items = itemMap.get(bpID);
+            sb.append(items.getEnName());
+            sb.append("\t");
+            sb.append(copyCnt.intValue());
+            writer.write(sb.toString());
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
     }
 
     private void getBlueprintBuyList() throws IOException {
@@ -131,32 +256,63 @@ public class IndustryService extends ServiceBase {
     }
 
     public void getManufacturingList(AuthAccount rfAccount,
-                                     double hopeMargin) throws Exception {
+                                     double hopeMargin, boolean onT2Manu) throws Exception {
         Map<Integer, List<EveOrder>> myOrder = getMyOrder(rfAccount);
         List<AssertItem> anAssert = getAssert(rfAccount);
-        List<AssertItem> rfAssert = filterRFAssert(anAssert, new ArrayList<>(),
-                PrjConst.STATION_ID_RF_WINTERCO);
         ItemsMapper itemsMapper = getItemsMapper();
-        Map<Integer, IndustryProduct> productMap = getProductIDList();
-        assembleStationPrice(rfAccount, productMap);
-        assemblePurchasePrice(productMap, itemsMapper);
-        filterMargin(productMap, hopeMargin, myOrder, rfAssert);
+        Map<Integer, IndustryProduct> productMap = getProductIDList(itemsMapper, onT2Manu);
+        assembleRFSellPrice(rfAccount, productMap);
+        assembleMaterialPurchasePrice(productMap, itemsMapper);
+        filterMargin(productMap, hopeMargin, myOrder, anAssert);
         outRecommendedManufacturing(productMap, itemsMapper);
     }
 
     private void outRecommendedManufacturing(Map<Integer, IndustryProduct> productMap, ItemsMapper itemsMapper) throws Exception {
+        List<Map.Entry<Integer,IndustryProduct>> list = new ArrayList<>(productMap.entrySet());
+        Collections.sort(list, new Comparator<Map.Entry<Integer, IndustryProduct>>() {
+            @Override
+            public int compare(Map.Entry<Integer, IndustryProduct> o1, Map.Entry<Integer, IndustryProduct> o2) {
+                return o2.getValue().getRecommendCount() - o1.getValue().getRecommendCount();
+            }
+        });
+
+
         File file = new File("result/industry/recommendManufacturing");
         FileWriter writer = new FileWriter(file);
-        Iterator<Integer> iter = productMap.keySet().iterator();
-        while (iter.hasNext()) {
-            Integer id = iter.next();
-            IndustryProduct industryProduct = productMap.get(id);
-            StringBuilder sb = new StringBuilder();
-            sb.append(itemsMapper.selectByPrimaryKey(id).getEnName());
-            writer.write(sb.toString());
+        Map<Integer, Items> map = getItemMap(itemsMapper, new ArrayList<>(productMap.keySet()));
+        List<IndustryProduct> t2 = new ArrayList<>();
+        for (Map.Entry<Integer,IndustryProduct> entry : list) {
+            Integer id = entry.getKey();
+            IndustryProduct industryProduct = entry.getValue();
+            if(industryProduct.isT2()) {
+                int remainRun = industryProduct.getRemainRun();
+                if(remainRun > 0) {
+                    writer.write(map.get(id).getEnName());
+                    writer.write("\t");
+                    writer.write(String.valueOf(remainRun));
+                    writer.write("\r\n");
+                    int recCount = industryProduct.getRecommendCount();
+                    recCount -= remainRun;
+                    if(recCount > 0) {
+                        industryProduct.setRecommendCount(recCount);
+                        t2.add(industryProduct);
+                    }
+                } else {
+                    t2.add(industryProduct);
+                }
+            } else {
+                writer.write(map.get(id).getEnName());
+                writer.write("\t");
+                writer.write(String.valueOf(industryProduct.getRecommendCount()));
+                writer.write("\r\n");
+            }
+        }
+        writer.write("==============T2==============");
+        writer.write("\r\n");
+        for(IndustryProduct product : t2) {
+            writer.write(map.get(product.getTypeID()).getEnName());
             writer.write("\t");
-//            writer.write("x");
-            writer.write(new BigDecimal(industryProduct.getDailyVolume() * 4).toString());
+            writer.write(String.valueOf(product.getRecommendCount()));
             writer.write("\r\n");
         }
         writer.flush();
@@ -165,18 +321,24 @@ public class IndustryService extends ServiceBase {
 
     private void filterMargin(Map<Integer, IndustryProduct> productMap, double hopeMargin, Map<Integer,
             List<EveOrder>> myOrder, List<AssertItem> rfAssert) {
+        HashMap<Integer, Integer> expressMap = getExpressMap();
         Iterator<Integer> iter = productMap.keySet().iterator();
         while(iter.hasNext()) {
             Integer id = iter.next();
             IndustryProduct product = productMap.get(id);
             double flowStationPrice = product.getStationPrice() * product.getFlowQuantity();
             double purchasePrice = product.getPurchasePrice();
+            if(product.isT2()) {
+                flowStationPrice -= product.getRunInventoryFee();
+            }
             double margin = (flowStationPrice - purchasePrice)/purchasePrice;
             if(margin < hopeMargin) {
                 iter.remove();
             }
+            Integer expCnt = expressMap.get(id) != null ? expressMap.get(id) : 0;
             //TODO 此处如何分开无销量的和自己货物充足的？
-            int recCnt = new BigDecimal(product.getDailyVolume() * 4).intValue() - getOrderCnt(id, myOrder) - getAssertCnt(id, rfAssert);
+            int recCnt =
+                    new BigDecimal(product.getDailyVolume() * 4).intValue() - getOrderCnt(id, myOrder) - getAssertCnt(id, rfAssert) - expCnt;
             if(recCnt <= 0) {
                 iter.remove();
             }
@@ -209,7 +371,7 @@ public class IndustryService extends ServiceBase {
         return ret;
     }
 
-    private void assemblePurchasePrice(Map<Integer, IndustryProduct> productMap, ItemsMapper itemsMapper) {
+    private void assembleMaterialPurchasePrice(Map<Integer, IndustryProduct> productMap, ItemsMapper itemsMapper) {
         IndustryactivitymaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
         Iterator<Integer> iter = productMap.keySet().iterator();
         while(iter.hasNext()) {
@@ -219,15 +381,37 @@ public class IndustryService extends ServiceBase {
                     new IndustryactivitymaterialsExample();
             example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andTypeidEqualTo(product.getBlueprintTypeID());
             List<Industryactivitymaterials> materials = materialsMapper.selectByExample(example);
-            double appraise = getAppraise(materials, itemsMapper, product);
+            double appraise = getAppraise(materials, itemsMapper);
             product.setPurchasePrice(appraise);
         }
     }
 
-    private double getAppraise(List<Industryactivitymaterials> materials, ItemsMapper itemsMapper, IndustryProduct product) {
+    private double getAppraise(Map<Integer, Integer> itemMap, ItemsMapper itemsMapper, boolean buy) {
         StringBuilder sb = new StringBuilder();
+        Map<Integer, Items> map = getItemMap(itemsMapper, new ArrayList<>(itemMap.keySet()));
+        Iterator<Integer> iter = itemMap.keySet().iterator();
+        while(iter.hasNext()) {
+            Integer next = iter.next();
+            Items item = map.get(next);
+            sb.append(item.getEnName());
+            sb.append(" ");
+            sb.append(itemMap.get(next));
+            sb.append("\n");
+        }
+        String url = getEVEPraisalUrl(sb.toString());
+        HttpResponse execute = HttpRequest.post(url).execute();
+        String body = execute.body();
+        JSONObject appraisal = JSON.parseObject(body).getJSONObject("appraisal");
+        JSONObject totals = appraisal.getJSONObject("totals");
+        return buy ? totals.getDouble("buy") : totals.getDouble("sell");
+    }
+
+    private double getAppraise(List<Industryactivitymaterials> materials, ItemsMapper itemsMapper) {
+        StringBuilder sb = new StringBuilder();
+        Map<Integer, Items> map = getItemMap(itemsMapper, getMaterialTypeIDList(materials));
+
         for(Industryactivitymaterials material : materials) {
-            Items item = itemsMapper.selectByPrimaryKey(material.getMaterialtypeid());
+            Items item = map.get(material.getMaterialtypeid());
             sb.append(item.getEnName());
             sb.append(" ");
             BigDecimal realCnt = NumberUtil.round(material.getQuantity() * (1 - MATERIAL_RESEARCH) * 0.94
@@ -243,6 +427,14 @@ public class IndustryService extends ServiceBase {
         return totals.getDouble("buy");
     }
 
+    private List<Integer> getMaterialTypeIDList(List<Industryactivitymaterials> materials) {
+        List<Integer> ret = new ArrayList<>();
+        for(Industryactivitymaterials material : materials) {
+            ret.add(material.getMaterialtypeid());
+        }
+        return ret;
+    }
+
     private String getEVEPraisalUrl(String avatar) {
         StringBuilder sb = new StringBuilder();
         sb.append("https://evepraisal.com/appraisal.json?market=jita&raw_textarea=");
@@ -251,7 +443,7 @@ public class IndustryService extends ServiceBase {
         return sb.toString();
     }
 
-    private void assembleStationPrice(AuthAccount rfAccount, Map<Integer, IndustryProduct> productMap) {
+    private void assembleRFSellPrice(AuthAccount rfAccount, Map<Integer, IndustryProduct> productMap) {
         Map<Integer, List<EveOrder>> orderMap =
             getRfOrder(rfAccount.getAccessToken(), PrjConst.STATION_ID_RF_WINTERCO);
         Iterator<Integer> iter = productMap.keySet().iterator();
@@ -280,7 +472,7 @@ public class IndustryService extends ServiceBase {
         }
     }
 
-    private Map<Integer, IndustryProduct> getProductIDList() {
+    private Map<Integer, IndustryProduct> getProductIDList(ItemsMapper itemsMapper, boolean onT2Manu) {
         Map<Integer, IndustryProduct> ret = new HashMap<>();
         IndustryactivityproductsMapper productsMapper =
                 getIndustryActivityProductsMapper();
@@ -288,22 +480,101 @@ public class IndustryService extends ServiceBase {
                 new IndustryactivityproductsExample();
 
         List<CharBlueprint> ownBpID = getOwnBlueprint();
+        List<Integer> allRigsMarketGroup = getAllRigsMarketGroup();
         List<Integer> fullIDList = getFullResearchIDList(ownBpID);
+        List<Integer> fullRigIDList = new ArrayList<>();
         example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andTypeidIn(fullIDList);
         List<Industryactivityproducts> industryActivityProducts = productsMapper.selectByExample(example);
+        Map<Integer, Items> map = getItemMap(itemsMapper, getProductID(industryActivityProducts));
         for(Industryactivityproducts products : industryActivityProducts) {
             Integer id = products.getProducttypeid();
+            Items items = map.get(id);
+            if(!allRigsMarketGroup.contains(items.getMarketgroupid())) {
+                continue;
+            }
+            fullRigIDList.add(products.getTypeid());
             IndustryProduct product = new IndustryProduct();
             product.setTypeID(id);
             product.setBlueprintTypeID(products.getTypeid());
             product.setFlowQuantity(products.getQuantity());
             ret.put(id, product);
         }
+        if(onT2Manu) {
+            getT2Product(ret, fullRigIDList, productsMapper, ownBpID, itemsMapper);
+        }
         return ret;
+    }
+
+    private List<Integer> getProductID(List<Industryactivityproducts> industryActivityProducts) {
+        List<Integer> ret = new ArrayList<>();
+        for(Industryactivityproducts product : industryActivityProducts) {
+            ret.add(product.getProducttypeid());
+        }
+        return ret;
+    }
+
+    private void getT2Product(Map<Integer, IndustryProduct> ret, List<Integer> fullRigIDList, IndustryactivityproductsMapper productsMapper, List<CharBlueprint> ownBpID, ItemsMapper itemsMapper) {
+        IndustryactivityproductsExample example =
+                new IndustryactivityproductsExample();
+        example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_INVENTION).andTypeidIn(fullRigIDList);
+        List<Industryactivityproducts> industryactivityproducts = productsMapper.selectByExample(example);
+        List<Integer> t2bpID = getT2bpID(industryactivityproducts);
+
+        IndustryactivityproductsExample another =
+                new IndustryactivityproductsExample();
+        another.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andTypeidIn(t2bpID);
+        List<Industryactivityproducts> t2Products = productsMapper.selectByExample(another);
+        IndustryactivitymaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
+        for(Industryactivityproducts products : t2Products) {
+            Integer id = products.getProducttypeid();
+            IndustryProduct product = new IndustryProduct();
+            product.setTypeID(id);
+            product.setT2(true);
+            product.setBlueprintTypeID(products.getTypeid());
+            product.setFlowQuantity(PrjConst.INVENTION_BPC_DFT_RUNS_SHIP_RIG + DECRYPTOR.Augmentation.Runs);
+            product.setRemainRun(getCharBlueprintByBPID(products.getTypeid(), ownBpID));
+            product.setRunInventoryFee(getRunInventoryFee(products.getTypeid(), materialsMapper, itemsMapper));
+            ret.put(id, product);
+        }
+    }
+
+    private int getRunInventoryFee(Integer typeid, IndustryactivitymaterialsMapper materialsMapper, ItemsMapper itemsMapper) {
+        double successOne = 1 / PrjConst.INVENTION_RIG_SUCCESS_AUGMENTATION_L4;
+
+        IndustryactivitymaterialsExample example = new IndustryactivitymaterialsExample();
+        example.createCriteria().andTypeidEqualTo(typeid).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_INVENTION);
+        List<Industryactivitymaterials> industryactivitymaterials = materialsMapper.selectByExample(example);
+        Map<Integer, Integer> material = new HashMap<>();
+        material.put(34203, 1);
+        for(Industryactivitymaterials inventoryMaterial : industryactivitymaterials) {
+            material.put(inventoryMaterial.getMaterialtypeid(), inventoryMaterial.getQuantity());
+        }
+        double appraise = getAppraise(material, itemsMapper, true);
+        BigDecimal divide = (new BigDecimal(appraise).multiply(new BigDecimal(successOne))).divide(new BigDecimal(10));
+        return NumberUtil.round(divide, 0, RoundingMode.UP).intValue();
+    }
+
+    private List<Integer> getT2bpID(List<Industryactivityproducts> industryactivityproducts) {
+        List<Integer> ret = new ArrayList<>();
+        for(Industryactivityproducts product : industryactivityproducts) {
+            ret.add(product.getProducttypeid());
+        }
+        return ret;
+    }
+
+    private int getCharBlueprintByBPID(int blueprintID, List<CharBlueprint> ownBpID) {
+        int i = 0;
+        for(CharBlueprint charBlueprint : ownBpID) {
+            if(charBlueprint.getTypeId() == blueprintID) {
+                i += charBlueprint.getRuns();
+            }
+        }
+        return i;
     }
 
     public void getListNeedMaterial(String productStr, AuthAccount materialAccount) throws Exception {
         Map<String, Integer> productMap = parseProductStr(productStr);
+        //TODO应该并行计算 否则材料的减少上会有BUG
         getListNeedMaterial(productMap, materialAccount);
     }
 
@@ -319,8 +590,9 @@ public class IndustryService extends ServiceBase {
 
     public void getListNeedMaterial(Map<String, Integer> productMap, AuthAccount materialAccount) throws Exception {
         Map<Integer, Integer> productIDMap = getProductIDMap(productMap);
-        Map<Integer, Integer> typeIDCountMap = getBlueprintCountMap(productIDMap);
-        Map<String, Integer> materialCountMap = getMaterialCountMap(typeIDCountMap, materialAccount);
+        Map<Integer, Items> itemMap = getItemMap(getItemsMapper(), new ArrayList<>(productIDMap.keySet()));
+        Map<Industryactivityproducts, Integer> typeIDCountMap = getBlueprintCountMap(productIDMap);
+        Map<String, Integer> materialCountMap = getMaterialCountMap(typeIDCountMap, materialAccount, itemMap);
         outNeedMaterialCount(materialCountMap);
     }
 
@@ -356,27 +628,44 @@ public class IndustryService extends ServiceBase {
         writer.close();
     }
 
-    private Map<String, Integer> getMaterialCountMap(Map<Integer, Integer> typeIDCountMap, AuthAccount materialAccount) throws Exception {
+    private boolean judgeT2(Items items) {
+        Integer metagroupid = items.getMetagroupid();
+        if(metagroupid == null) {
+            return false;
+        }
+        return metagroupid == 2;
+    }
+
+    private Map<String, Integer> getMaterialCountMap(Map<Industryactivityproducts, Integer> typeIDCountMap,
+                                                     AuthAccount materialAccount, Map<Integer, Items> itemMap) throws Exception {
         List<AssertItem> anAssert = getAssert(materialAccount);
         Map<Integer, Integer> assertMap = getAssertMap(anAssert);
-        Map<Integer, Integer> materialTypeMap = new HashMap<>();
+        HashMap<Integer, Integer> expressMap = getExpressMap();
+        Map<Integer, MaterialOrigin> materialTypeMap = new HashMap<>();
         IndustryactivitymaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
-        Iterator<Integer> iter = typeIDCountMap.keySet().iterator();
+        Iterator<Industryactivityproducts> iter = typeIDCountMap.keySet().iterator();
         while (iter.hasNext()) {
-            Integer id = iter.next();
-            Integer blueCnt = typeIDCountMap.get(id);
+            Industryactivityproducts next = iter.next();
+            Items items = itemMap.get(next.getProducttypeid());
+            Integer id = next.getTypeid();
+            Integer blueCnt = typeIDCountMap.get(next);
             IndustryactivitymaterialsExample example = new IndustryactivitymaterialsExample();
             example.createCriteria().andTypeidEqualTo(id).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING);
             List<Industryactivitymaterials> materialsList = materialsMapper.selectByExample(example);
-            for(int i = 0; i < blueCnt; i++) {
-                for (Industryactivitymaterials materials : materialsList) {
-                    Integer count = materialTypeMap.get(materials.getMaterialtypeid());
-                    if(count == null) {
-                        count = 0;
-                    }
-                    count += materials.getQuantity();
-                    materialTypeMap.put(materials.getMaterialtypeid(), count);
+            for (Industryactivitymaterials materials : materialsList) {
+                MaterialOrigin origin = materialTypeMap.get(materials.getMaterialtypeid());
+                if(origin == null) {
+                    origin = new MaterialOrigin();
+                    origin.setId(materials.getMaterialtypeid());
+                    origin.setCount(0);
+                    origin.setT2(judgeT2(items));
                 }
+                BigDecimal me = BigDecimal.valueOf(1.0 - (origin.isT2() ? T2_MATERIAL_RESEARCH : MATERIAL_RESEARCH));
+                BigDecimal mul = NumberUtil.mul(new BigDecimal(materials.getQuantity()), me);
+                mul = NumberUtil.round(mul, 0, RoundingMode.UP);
+                BigDecimal result = mul.multiply(new BigDecimal(blueCnt));
+                origin.setCount(origin.getCount() + result.intValue());
+                materialTypeMap.put(materials.getMaterialtypeid(), origin);
             }
         }
         ItemsMapper itemsMapper = getItemsMapper();
@@ -384,16 +673,21 @@ public class IndustryService extends ServiceBase {
         Iterator<Integer> iterator = materialTypeMap.keySet().iterator();
         while (iterator.hasNext()) {
             Integer id = iterator.next();
-            Integer count = materialTypeMap.get(id);
+            MaterialOrigin origin = materialTypeMap.get(id);
             Items items = itemsMapper.selectByPrimaryKey(id);
-            BigDecimal mul = NumberUtil.mul(new BigDecimal(count), new BigDecimal(1.0-MATERIAL_RESEARCH));
+            BigDecimal mul = new BigDecimal(origin.getCount());
             //TODO 6%建筑插 以后改为传入
-            mul = NumberUtil.mul(mul, new BigDecimal(0.94));
+            mul = NumberUtil.mul(mul, new BigDecimal("0.94"));
+            mul = NumberUtil.round(mul, 0, RoundingMode.UP);
             Integer ownCnt = assertMap.get(id);
             if(ownCnt != null) {
                 mul = NumberUtil.sub(mul, ownCnt);
             }
-            int needCount = NumberUtil.round(mul, 0, RoundingMode.UP).intValue();
+            Integer expCnt = expressMap.get(id);
+            if(expCnt != null) {
+                mul = NumberUtil.sub(mul, expCnt);
+            }
+            int needCount = mul.intValue();
             if(needCount > 0) {
                 ret.put(items.getEnName(), needCount);
             }
@@ -401,8 +695,8 @@ public class IndustryService extends ServiceBase {
         return ret;
     }
 
-    private Map<Integer, Integer> getBlueprintCountMap(Map<Integer, Integer> productIDMap) {
-        Map<Integer, Integer> typeIDCountMap = new HashMap<>();
+    private Map<Industryactivityproducts, Integer> getBlueprintCountMap(Map<Integer, Integer> productIDMap) {
+        Map<Industryactivityproducts, Integer> typeIDCountMap = new HashMap<>();
         IndustryactivityproductsMapper productsMapper = getIndustryActivityProductsMapper();
         Iterator<Integer> iter = productIDMap.keySet().iterator();
         while(iter.hasNext()) {
@@ -411,8 +705,10 @@ public class IndustryService extends ServiceBase {
             example.createCriteria().andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING).andProducttypeidEqualTo(id);
             Industryactivityproducts product = productsMapper.selectByExample(example).get(0);
             Integer productCnt = productIDMap.get(id);
-            BigDecimal blueprintCnt = NumberUtil.div(new BigDecimal(productCnt), new BigDecimal(product.getQuantity()), 0, RoundingMode.UP);
-            typeIDCountMap.put(product.getTypeid(), blueprintCnt.intValue());
+            BigDecimal blueprintCnt = NumberUtil.div(new BigDecimal(productCnt),
+                    new BigDecimal(product.getQuantity()), 0,
+                            RoundingMode.UP);
+            typeIDCountMap.put(product, blueprintCnt.intValue());
         }
         return typeIDCountMap;
     }

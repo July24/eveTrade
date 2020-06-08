@@ -1,6 +1,5 @@
 package com.eve.service;
 
-import cn.hutool.Hutool;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
@@ -31,9 +30,9 @@ public class BusinessService extends ServiceBase {
         AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
         AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
                 PrjConst.LEAH_REFRESH_TOKEN);
-        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
-                3, 0.1, true);
-        bs.getChangeItemList(account);
+//        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
+//                3, 0.1, true);
+//        bs.getChangeItemList(account);
 //        bs.getForgeBuyChangeItemList(jitaAccount);
 
 //        bs.parseStationExportMarket(account, PrjConst.STATION_ID_RF_WINTERCO);
@@ -49,8 +48,7 @@ public class BusinessService extends ServiceBase {
 
     public void getRfRelistItem(AuthAccount account, List<Integer> exclude) throws Exception {
         List<AssertItem> anAssert = getAssert(account);
-        List<AssertItem> rfAssert = filterRFAssert(anAssert, exclude,
-                PrjConst.STATION_ID_RF_WINTERCO);
+        List<AssertItem> rfAssert = filterRFAssert(anAssert, exclude);
         Set<Integer> orderIDs = getMyOrder(account).keySet();
         List<Items> notList = getNotList(rfAssert, orderIDs);
         outRelist(notList);
@@ -271,7 +269,7 @@ public class BusinessService extends ServiceBase {
     public void parseStationExportMarket(AuthAccount account, String stationID) throws Exception {
         Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
         HashMap<Integer, Items> itemMap = getItemMap();
-        ForkJoinPool pool = new ForkJoinPool();
+        ForkJoinPool pool = new ForkJoinPool(128);
         ParseOutputMarketTask task = new ParseOutputMarketTask(orderMap, itemMap);
         pool.invoke(task);
         Map<Integer, OrderParseResult> result = task.join();
@@ -317,17 +315,15 @@ public class BusinessService extends ServiceBase {
     public void parseStationMarket(AuthAccount account, AuthAccount jitaAccount, String stationID,
                                    int flowFilter, double hopeRoi, boolean detail) throws Exception {
         Map<Integer, List<EveOrder>> orderMap = getRfOrder(account.getAccessToken(), stationID);
-
-//        List<EveOrder> orderList = orderMap.get(40362);
-//        orderMap = pageOrderMap(orderMap, 1000, 2000);
-
         HashMap<Integer, Items> itemMap = getItemMap();
-        HashMap<Integer, Integer> jitaInventory = getWarehouseMap(jitaAccount, PrjConst.STATION_ID_JITA_NAVY4);
-        HashMap<Integer, Integer> rfInventory = getWarehouseMap(account, PrjConst.STATION_ID_RF_WINTERCO);
+        HashMap<Integer, Integer> jitaInventory = getWarehouseMap(jitaAccount, null);
+        HashMap<Integer, Integer> rfInventory = getWarehouseMap(account, null);
         HashMap<Integer, Integer> selfOrderMap = getSelfSellOrderRemainMap(account, PrjConst.STATION_ID_RF_WINTERCO);
+        HashMap<Integer, Integer> expressMap = getExpressMap();
 
         ForkJoinPool pool = new ForkJoinPool(128);
-        ParseMarketTask task = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, orderMap, itemMap,
+        ParseMarketTask task = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, expressMap, orderMap,
+                itemMap,
                 flowFilter, hopeRoi);
         pool.invoke(task);
         Map<Integer, OrderParseResult> result = task.join();
@@ -498,39 +494,28 @@ public class BusinessService extends ServiceBase {
             writer.write(record);
             writer.write("\r\n");
         }
-        outBigVolume(writer, bigVolList);
-        outManufacturing(writer, bpManuList);
+        outBigVolume(writer, bigVolList, df);
+        outManufacturing(writer, bpManuList, df);
         writer.flush();
         writer.close();
     }
 
-    private void outManufacturing(FileWriter writer, List<Map.Entry<Integer, OrderParseResult>> bpManuList) throws IOException {
+    private void outManufacturing(FileWriter writer, List<Map.Entry<Integer, OrderParseResult>> bpManuList, DecimalFormat df) throws IOException {
         writer.write("===============manufacturing==============");
         writer.write("\r\n");
         for (Map.Entry<Integer,OrderParseResult> item : bpManuList) {
             OrderParseResult orderParseResult = item.getValue();
-            String record = getSimplePurchaseRecord(orderParseResult);
-            writer.write(record);
+            writer.write(getSimplePurchaseRecord(orderParseResult));
             writer.write("\r\n");
         }
     }
 
-    private void outBigVolume(FileWriter writer, List<Map.Entry<Integer, OrderParseResult>> bigVolList) throws IOException {
+    private void outBigVolume(FileWriter writer, List<Map.Entry<Integer, OrderParseResult>> bigVolList, DecimalFormat df) throws IOException {
         writer.write("===============BigVolume==============");
         writer.write("\r\n");
         for (Map.Entry<Integer,OrderParseResult> item : bigVolList) {
             OrderParseResult orderParseResult = item.getValue();
-            StringBuilder record = new StringBuilder();
-            record.append(orderParseResult.getItem().getEnName());
-            record.append(" x");
-            record.append(orderParseResult.getRecommendedCount());
-            record.append("\t");
-            record.append(orderParseResult.getStatisticData().getProfit());
-            record.append("\t");
-            record.append(orderParseResult.getStatisticData().getProfitMargin());
-            record.append("\t");
-            record.append(orderParseResult.getItem().getVolume());
-            writer.write(record.toString());
+            writer.write(getPurchaseRecord(orderParseResult, df));
             writer.write("\r\n");
         }
     }
@@ -550,18 +535,18 @@ public class BusinessService extends ServiceBase {
         int count = orderParseResult.getRecommendedCount();
         sb.append(count);
         sb.append("\t");
-        int profit = orderParseResult.getStatisticData().getProfit();
-        sb.append(df.format(profit));
-        sb.append("\t");
-        sb.append(orderParseResult.getStatisticData().getProfitMargin());
-        sb.append("\t");
         double min = orderParseResult.getEveMarketData().getSell().getMin();
         double max = orderParseResult.getEveMarketData().getBuy().getMax();
-        if(0.1 < (min - max)/min) {
+        if(0.05 < (min - max)/min) {
             sb.append("true");
         } else {
             sb.append("false");
         }
+        sb.append("\t");
+        int profit = orderParseResult.getStatisticData().getProfit();
+        sb.append(df.format(profit));
+        sb.append("\t");
+        sb.append(orderParseResult.getStatisticData().getProfitMargin());
         sb.append("\t");
         sb.append(df.format(count * profit));
         return sb.toString();
@@ -687,7 +672,7 @@ public class BusinessService extends ServiceBase {
         List<AssertItem> anAssert = getAssert(account);
         HashMap<Integer, Integer> ret = new HashMap<>();
         for(AssertItem item : anAssert) {
-            if(Long.parseLong(locationID) != item.getLocationId()) {
+            if(locationID != null && Long.parseLong(locationID) != item.getLocationId()) {
                 continue;
             }
             int typeId = item.getTypeId();

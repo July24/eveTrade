@@ -12,4 +12,8 @@ public class IndustryProduct {
     private double StationPrice;
     private int dailyVolume;
     private int recommendCount;
+
+    private boolean t2 = false;
+    private int remainRun = -1;
+    private int RunInventoryFee = 0;
 }

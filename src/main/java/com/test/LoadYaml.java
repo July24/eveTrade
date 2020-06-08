@@ -19,7 +19,6 @@ import java.util.stream.Stream;
 public class LoadYaml {
 
     public static void main(String[] args) {
-
         writeCSV();
     }
 
@@ -29,7 +28,7 @@ public class LoadYaml {
             CSVPrinter csvPrinter = CSVFormat.DEFAULT.print(out);
             Yaml yaml = new Yaml();
 //            URL url = LoadYaml.class.getClassLoader().getResource("test.yaml");
-            File yamlFile = new File("D:\\yhy\\sde\\sde\\fsd\\typeIDs.yaml");
+            File yamlFile = new File("D:\\yhy\\sde222\\sde\\fsd\\typeIDs.yaml");
             csvPrinter.printRecord("id","basePrice","graphicID","groupID","iconID","marketGroupID","metaGroupID","cn_name","en_name","volume");
             if (yamlFile != null) {
                 //获取test.yaml文件中的配置数据，然后转换为obj，

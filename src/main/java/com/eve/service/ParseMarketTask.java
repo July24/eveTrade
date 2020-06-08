@@ -23,17 +23,20 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
     Map<Integer, Integer> selfOrderMap;
     Map<Integer, Integer> jitaInventory;
     Map<Integer, Integer> rfInventory;
+    Map<Integer, Integer> expressMap;
     Map<Integer, List<EveOrder>> orderMap;
     Map<Integer, Items> itemMap;
     double hopeRoi;
     int flowFilter;
 
     public ParseMarketTask(Map<Integer, Integer> selfOrderMap, Map<Integer, Integer> jitaInventory, Map<Integer,
-            Integer> rfInventory, Map<Integer, List<EveOrder>> orderMap, Map<Integer, Items> itemMap,
+            Integer> rfInventory, Map<Integer, Integer> expressMap, Map<Integer, List<EveOrder>> orderMap,
+                           Map<Integer, Items> itemMap,
                            int flowFilter, double hopeRoi) {
         this.selfOrderMap = selfOrderMap;
         this.jitaInventory = jitaInventory;
         this.rfInventory = rfInventory;
+        this.expressMap = expressMap;
         this.orderMap = orderMap;
         this.itemMap = itemMap;
         this.flowFilter = flowFilter;
@@ -52,7 +55,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             queryJitaOrderInfoFromEsi(result);
 //            System.out.println("导入Jita订单完毕");
 //            System.out.println("getItemMap完毕");
-            importInventory(result, selfOrderMap, jitaInventory, rfInventory);//todo 传入订单/库存
+            importInventory(result);//todo 传入订单/库存
 //            System.out.println("importInventory完毕");
             try {
                 getRecommendedPurchaseQuantity(result, flowFilter, hopeRoi, itemMap);
@@ -64,9 +67,11 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             HashMap<Integer, List<EveOrder>> leftMap = new HashMap<>();
             HashMap<Integer, List<EveOrder>> rightMap = new HashMap<>();
             splitMap(leftMap, rightMap);
-            ParseMarketTask left = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, leftMap, itemMap,
+            ParseMarketTask left = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, expressMap, leftMap,
+                    itemMap,
                     flowFilter, hopeRoi);
-            ParseMarketTask right = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, rightMap, itemMap,
+            ParseMarketTask right = new ParseMarketTask(selfOrderMap, jitaInventory, rfInventory, expressMap, rightMap
+                    , itemMap,
                     flowFilter, hopeRoi);
             invokeAll(left, right);
             Map<Integer, OrderParseResult> merge = left.join();
@@ -127,7 +132,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
                 }
                 orderParseResult.setTypeID(typeID);
 
-                Double orderPrice = Double.valueOf(order.getPrice());
+                double orderPrice = order.getPrice();
                 if(orderPrice < orderParseResult.getMinPrice()) {
                     orderParseResult.setMinPrice(orderPrice);
                 }
@@ -219,7 +224,7 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
         return sb.toString();
     }
 
-    private void importInventory(Map<Integer, OrderParseResult> result, Map<Integer, Integer> selfOrderMap, Map<Integer, Integer> jitaInventory, Map<Integer, Integer> rfInventory) {
+    private void importInventory(Map<Integer, OrderParseResult> result) {
         Iterator<Integer> iter = result.keySet().iterator();
         while(iter.hasNext()) {
             Integer id = iter.next();
@@ -236,6 +241,10 @@ public class ParseMarketTask extends RecursiveTask<Map<Integer, OrderParseResult
             Integer rfCnt = rfInventory.get(id);
             if(rfCnt != null) {
                 orderParseResult.addInventory(rfCnt);
+            }
+            Integer expCnt = expressMap.get(id);
+            if(expCnt != null) {
+                orderParseResult.addInventory(expCnt);
             }
         }
     }

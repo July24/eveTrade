@@ -16,8 +16,7 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.util.*;
 
 public class ServiceBase {
@@ -148,9 +147,11 @@ public class ServiceBase {
     }
 
     protected List<Integer> getFullResearchIDList(List<CharBlueprint> ownBpID) {
+        int i = 0;
         List<Integer> ret = new ArrayList<>();
         for(CharBlueprint bp : ownBpID) {
-            if(bp.getTimeEfficiency() >= 20 && bp.getMaterialEfficiency() >= 10) {
+            Integer typeId = bp.getTypeId();
+            if((bp.getTimeEfficiency() >= 20 && bp.getMaterialEfficiency() >= 10)) {
                 ret.add(bp.getTypeId());
             }
         }
@@ -168,14 +169,63 @@ public class ServiceBase {
         return JSON.parseArray(body, AssertItem.class);
     }
 
-    protected List<AssertItem> filterRFAssert(List<AssertItem> anAssert, List<Integer> exclude, String locationID) {
+    protected List<AssertItem> filterRFAssert(List<AssertItem> anAssert, List<Integer> exclude) {
         List<AssertItem> ret = new ArrayList<>();
         for(AssertItem item : anAssert) {
-            if(Long.parseLong(locationID) == item.getLocationId() && !exclude.contains(item.getTypeId())) {
+            if(!exclude.contains(item.getTypeId())) {
                 ret.add(item);
             }
         }
         return ret;
+    }
+
+    protected HashMap<Integer, Integer> getExpressMap() {
+        ItemsMapper itemsMapper = getItemsMapper();
+        HashMap<Integer, Integer> map = new HashMap<>();
+        File file = new File("result/trade/expressInProgress");
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(file));
+            String tempString = null;
+            // 一次读入一行，直到读入null为文件结束
+            while ((tempString = reader.readLine()) != null) {
+                // 显示行号
+                String[] split = tempString.split("\t");
+                Items items = getItemsByEnName(split[0], itemsMapper);
+                if(items != null) {
+                    map.put(items.getId(), Integer.parseInt(split[1].replace(",","")));
+                }
+            }
+            reader.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException e1) {
+                }
+            }
+        }
+        return map;
+    }
+
+    private Items getItemsByEnName(String enName, ItemsMapper itemsMapper) {
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andEnNameEqualTo(enName);
+        List<Items> items = itemsMapper.selectByExample(example);
+        return items.size() > 0 ? items.get(0) : null;
+    }
+
+    protected Map<Integer, Items> getItemMap(ItemsMapper itemsMapper, List<Integer> keys) {
+        Map<Integer, Items> map = new HashMap<>();
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andIdIn(keys);
+        List<Items> items = itemsMapper.selectByExample(example);
+        for(Items item : items) {
+            map.put(item.getId(), item);
+        }
+        return map;
     }
 
     protected Map<Integer, List<EveOrder>> getMyOrder(AuthAccount account) {
