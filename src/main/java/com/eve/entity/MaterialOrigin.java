@@ -7,5 +7,4 @@ public class MaterialOrigin {
     private int id;
     private int count;
     private boolean t2;
-
 }

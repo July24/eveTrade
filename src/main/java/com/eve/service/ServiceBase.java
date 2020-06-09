@@ -11,6 +11,7 @@ import com.eve.entity.EveOrder;
 import com.eve.entity.database.*;
 import com.eve.util.PrjConst;
 import com.eve.util.TradeUtil;
+import io.swagger.models.auth.In;
 import org.apache.ibatis.io.Resources;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -34,8 +35,58 @@ public class ServiceBase {
         return newSb.toString();
     }
 
+    protected List<Integer> getSubMarketGroupID(List<Integer> roots) {
+        List<Integer> ret = new ArrayList<>();
+        InvmarketgroupsMapper marketgroupsMapper = getMarketgroupsMapper();
+        InvmarketgroupsExample example = new InvmarketgroupsExample();
+        example.createCriteria().andMarketgroupidIn(roots);
+        infinityFindSub(marketgroupsMapper, ret, marketgroupsMapper.selectByExample(example));
+        return ret;
+    }
+
+    private void infinityFindSub(InvmarketgroupsMapper marketgroupsMapper, List<Integer> ret,
+                                 List<Invmarketgroups> list) {
+        for(Invmarketgroups note : list) {
+            if(note.getHastypes()) {
+                ret.add(note.getMarketgroupid());
+            } else {
+                InvmarketgroupsExample example = new InvmarketgroupsExample();
+                example.createCriteria().andParentgroupidEqualTo(note.getMarketgroupid());
+                List<Invmarketgroups> invmarketgroups = marketgroupsMapper.selectByExample(example);
+                infinityFindSub(marketgroupsMapper, ret, invmarketgroups);
+            }
+        }
+    }
+
+    protected List<Integer> getRegionItemIDList(String regionID) {
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("datasource", PrjConst.DATASOURCE);
+        paramMap.put("page", 1);
+        paramMap.put("region_id ", regionID);
+        HttpResponse httpResponse = sendGetRequest(replaceBraces(PrjConst.LIST_REGION_ITEM_ID,
+                regionID), paramMap);
+        String body = httpResponse.body();
+        List<Integer> ret = JSON.parseArray(body, Integer.class);
+        int size = Integer.parseInt(httpResponse.header("x-pages"));
+        for(int i = 2; i <= size; i++) {
+            Map<String, Object> paramMap2 = new HashMap<>();
+            paramMap2.put("datasource", PrjConst.DATASOURCE);
+            paramMap2.put("page", i);
+            paramMap2.put("region_id ", regionID);
+            String body2 =
+                    sendGetRequest(replaceBraces(PrjConst.LIST_REGION_ITEM_ID,
+                            regionID), paramMap2).body();
+            if(body2.contains("error")) {
+                i--;
+                continue;
+            }
+            ret.addAll(JSON.parseArray(body2, Integer.class));
+        }
+        return ret;
+    }
+
     protected HashMap<Integer, List<EveOrder>> getRfOrder(String accessToken,
-                                                  String stationID) {
+                                                          String stationID) {
         Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("datasource", PrjConst.DATASOURCE);
         paramMap.put("page", 1);

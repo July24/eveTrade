@@ -49,19 +49,19 @@ public class IndustryService extends ServiceBase {
 
 
         //---------发明流程-----------
-        String t2ProductStr = "Medium Core Defense Field Extender II\t116\n" +
-                "Medium Capacitor Control Circuit II\t113\n" +
-                "Small Core Defense Field Extender II\t60\n" +
-                "Small Hyperspatial Velocity Optimizer II\t60\n" +
-                "Medium Anti-EM Screen Reinforcer II\t56";
-        is.getT2CopyCount(t2ProductStr);
+        String t2ProductStr = "Medium Core Defense Field Extender II\t1\n" +
+                "Medium Capacitor Control Circuit II\t1\n" +
+                "Small Core Defense Field Extender II\t1\n" +
+                "Small Hyperspatial Velocity Optimizer II\t1\n" +
+                "Medium Anti-EM Screen Reinforcer II\t1";
+//        is.getT2CopyCount(t2ProductStr);
 //        String t1BPCProductStr = "Medium Anti-EM Screen Reinforcer I Blueprint\t24\n" +
 //                "Small Hyperspatial Velocity Optimizer I Blueprint\t24\n" +
 //                "Medium Capacitor Control Circuit I Blueprint\t48\n" +
 //                "Small Core Defense Field Extender I Blueprint\t24\n" +
 //                "Medium Core Defense Field Extender I Blueprint\t48";
 //        is.t2InventionMaterial(t1BPCProductStr);
-        is.getListNeedMaterial(t2ProductStr, sanjiAccount);
+//        is.getListNeedMaterial(t2ProductStr, sanjiAccount);
     }
 
     private void t2InventionMaterial(String productStr) throws Exception {
@@ -253,6 +253,17 @@ public class IndustryService extends ServiceBase {
             allSub.add(invmarketgroup.getMarketgroupid());
         }
         return allSub;
+    }
+
+    public void rigManufacturingExport(double hopeMargin, boolean onT2Manu, double materialDiscount) throws Exception {
+        //TODO 出口船插
+        ItemsMapper itemsMapper = getItemsMapper();
+        Map<Integer, IndustryProduct> productMap = getProductIDList(itemsMapper, onT2Manu);
+
+//        assembleRFSellPrice(rfAccount, productMap);
+//        assembleMaterialPurchasePrice(productMap, itemsMapper);
+//        filterMargin(productMap, hopeMargin, myOrder, anAssert);
+//        outRecommendedManufacturing(productMap, itemsMapper);
     }
 
     public void getManufacturingList(AuthAccount rfAccount,
@@ -574,7 +585,6 @@ public class IndustryService extends ServiceBase {
 
     public void getListNeedMaterial(String productStr, AuthAccount materialAccount) throws Exception {
         Map<String, Integer> productMap = parseProductStr(productStr);
-        //TODO应该并行计算 否则材料的减少上会有BUG
         getListNeedMaterial(productMap, materialAccount);
     }
 
@@ -641,7 +651,8 @@ public class IndustryService extends ServiceBase {
         List<AssertItem> anAssert = getAssert(materialAccount);
         Map<Integer, Integer> assertMap = getAssertMap(anAssert);
         HashMap<Integer, Integer> expressMap = getExpressMap();
-        Map<Integer, MaterialOrigin> materialTypeMap = new HashMap<>();
+
+        List<ProductMaterial> productMaterials = new ArrayList<>();
         IndustryactivitymaterialsMapper materialsMapper = getIndustryActivityMaterialsMapper();
         Iterator<Industryactivityproducts> iter = typeIDCountMap.keySet().iterator();
         while (iter.hasNext()) {
@@ -652,44 +663,57 @@ public class IndustryService extends ServiceBase {
             IndustryactivitymaterialsExample example = new IndustryactivitymaterialsExample();
             example.createCriteria().andTypeidEqualTo(id).andActivityidEqualTo(PrjConst.BLUEPRINT_ACTIVITY_TYPE_MANUFACTURING);
             List<Industryactivitymaterials> materialsList = materialsMapper.selectByExample(example);
+            ProductMaterial productMaterial = new ProductMaterial();
             for (Industryactivitymaterials materials : materialsList) {
-                MaterialOrigin origin = materialTypeMap.get(materials.getMaterialtypeid());
-                if(origin == null) {
-                    origin = new MaterialOrigin();
-                    origin.setId(materials.getMaterialtypeid());
-                    origin.setCount(0);
-                    origin.setT2(judgeT2(items));
-                }
+                MaterialOrigin origin = new MaterialOrigin();
+                origin.setId(materials.getMaterialtypeid());
+                origin.setT2(judgeT2(items));
                 BigDecimal me = BigDecimal.valueOf(1.0 - (origin.isT2() ? T2_MATERIAL_RESEARCH : MATERIAL_RESEARCH));
                 BigDecimal mul = NumberUtil.mul(new BigDecimal(materials.getQuantity()), me);
                 mul = NumberUtil.round(mul, 0, RoundingMode.UP);
-                BigDecimal result = mul.multiply(new BigDecimal(blueCnt));
-                origin.setCount(origin.getCount() + result.intValue());
-                materialTypeMap.put(materials.getMaterialtypeid(), origin);
+                origin.setCount(mul.multiply(new BigDecimal(blueCnt)).intValue());
+                productMaterial.addMaterialOrigin(origin);
+            }
+            productMaterials.add(productMaterial);
+        }
+
+        Map<Integer, Integer> materialMap = new HashMap<>();
+        for(ProductMaterial product : productMaterials) {
+            List<MaterialOrigin> materialOriginList = product.getMaterialOriginList();
+            for(MaterialOrigin origin : materialOriginList) {
+                BigDecimal mul = new BigDecimal(origin.getCount());
+                //TODO 6%建筑插 以后改为传入
+                mul = NumberUtil.mul(mul, new BigDecimal("0.94"));
+                mul = NumberUtil.round(mul, 0, RoundingMode.UP);
+                int id = origin.getId();
+                Integer count = materialMap.get(id);
+                if(count == null) {
+                    count = 0;
+                }
+                count += mul.intValue();
+                materialMap.put(id, count);
             }
         }
+
         ItemsMapper itemsMapper = getItemsMapper();
         Map<String, Integer> ret = new HashMap<>();
-        Iterator<Integer> iterator = materialTypeMap.keySet().iterator();
+
+        Iterator<Integer> iterator = materialMap.keySet().iterator();
         while (iterator.hasNext()) {
             Integer id = iterator.next();
-            MaterialOrigin origin = materialTypeMap.get(id);
+            Integer count = materialMap.get(id);
             Items items = itemsMapper.selectByPrimaryKey(id);
-            BigDecimal mul = new BigDecimal(origin.getCount());
-            //TODO 6%建筑插 以后改为传入
-            mul = NumberUtil.mul(mul, new BigDecimal("0.94"));
-            mul = NumberUtil.round(mul, 0, RoundingMode.UP);
+
             Integer ownCnt = assertMap.get(id);
             if(ownCnt != null) {
-                mul = NumberUtil.sub(mul, ownCnt);
+                count -= ownCnt;
             }
             Integer expCnt = expressMap.get(id);
             if(expCnt != null) {
-                mul = NumberUtil.sub(mul, expCnt);
+                count -= expCnt;
             }
-            int needCount = mul.intValue();
-            if(needCount > 0) {
-                ret.put(items.getEnName(), needCount);
+            if(count > 0) {
+                ret.put(items.getEnName(), count);
             }
         }
         return ret;

@@ -27,9 +27,9 @@ import java.util.concurrent.ForkJoinPool;
 public class BusinessService extends ServiceBase {
     public static void main(String[] args) throws Exception {
         BusinessService bs = new BusinessService();
-        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
-        AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
-                PrjConst.LEAH_REFRESH_TOKEN);
+//        AuthAccount account = new AuthAccount(PrjConst.ALLEN_CHAR_ID, PrjConst.ALLEN_CHAR_NAME, PrjConst.ALLEN_REFRESH_TOKEN);
+//        AuthAccount jitaAccount = new AuthAccount(PrjConst.LEAH_CHAR_ID, PrjConst.LEAH_CHAR_NAME,
+//                PrjConst.LEAH_REFRESH_TOKEN);
 //        bs.parseStationMarket(account, jitaAccount, PrjConst.STATION_ID_RF_WINTERCO,
 //                3, 0.1, true);
 //        bs.getChangeItemList(account);
@@ -42,8 +42,28 @@ public class BusinessService extends ServiceBase {
         exclude.add(648);
         exclude.add(649);
         exclude.add(16242);
-        bs.getRfRelistItem(account, exclude);
+//        bs.getRfRelistItem(account, exclude);
 
+        List<Integer> marketRoot = new ArrayList<>();
+        marketRoot.add(364);
+        bs.getRfEmptyItem(marketRoot);
+    }
+
+    public void getRfEmptyItem(List<Integer> marketRoot) {
+        List<Integer> subMarketGroupID = getSubMarketGroupID(marketRoot);
+
+        List<Integer> forgeIDList = getRegionItemIDList(PrjConst.REGION_ID_THE_FORGE);
+        List<Integer> oasaIDList = getRegionItemIDList(PrjConst.REGION_ID_OASA);
+        forgeIDList.removeAll(oasaIDList);
+        ItemsMapper itemsMapper = getItemsMapper();
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andIdIn(forgeIDList);
+        List<Items> items = itemsMapper.selectByExample(example);
+        for(Items item : items) {
+            if(subMarketGroupID.contains(item.getMarketgroupid())) {
+                System.out.println(item);
+            }
+        }
     }
 
     public void getRfRelistItem(AuthAccount account, List<Integer> exclude) throws Exception {
@@ -537,7 +557,7 @@ public class BusinessService extends ServiceBase {
         sb.append("\t");
         double min = orderParseResult.getEveMarketData().getSell().getMin();
         double max = orderParseResult.getEveMarketData().getBuy().getMax();
-        if(0.05 < (min - max)/min) {
+        if(0.08 < (min - max)/min) {
             sb.append("true");
         } else {
             sb.append("false");
