@@ -8,9 +8,7 @@ import cn.hutool.core.util.NumberUtil;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import com.alibaba.fastjson.JSON;
-import com.eve.dao.IndustryactivityproductsMapper;
-import com.eve.dao.InvmarketgroupsMapper;
-import com.eve.dao.ItemsMapper;
+import com.eve.dao.*;
 import com.eve.entity.*;
 import com.eve.entity.database.*;
 import com.eve.util.DBConst;
@@ -20,6 +18,8 @@ import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 
 import java.io.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.concurrent.ForkJoinPool;
@@ -46,7 +46,215 @@ public class BusinessService extends ServiceBase {
 
         List<Integer> marketRoot = new ArrayList<>();
         marketRoot.add(364);
-        bs.getRfEmptyItem(marketRoot);
+//        bs.getRfEmptyItem(marketRoot);
+//        bs.getT2product();
+
+
+        String corpName = "Tribal Liberation Force";
+//        bs.getLPExchangeList(corpName);
+//        int singleExchangePrice = bs.getLPExchangeItemPrice(corpName, "Zainou 'Gypsy' CPU Management EE-603", 1,
+//        1000);
+//        System.out.println(singleExchangePrice);
+        Map<String, Integer> exchangeMap = new HashMap<>();
+        exchangeMap.put("Neural Boost - Standard", 3);
+        exchangeMap.put("Zainou 'Gypsy' CPU Management EE-603", 1);
+//        bs.getLPExchangeItemPrice(corpName, exchangeMap, 1000);
+
+        String exchangeList = "Republic Fleet Titanium Sabot S\tx5806\n" +
+                "Republic Fleet Valkyrie\tx82";
+        bs.getLPExchangeItemMaterials(corpName, exchangeList);
+    }
+
+    private void getLPExchangeItemMaterials(String corpName, String exchangeList) throws IOException {
+        Map<String, Integer> exchangeMap = parseExchangeString(exchangeList);
+        Map<String, Integer> sumMaterials = new HashMap<>();
+        List<ExchangeMaterial> exchangeMaterialList = queryDBandSum(exchangeMap, sumMaterials, corpName);
+        outNeedExchangeMaterial(exchangeMaterialList, sumMaterials);
+    }
+
+    private void outNeedExchangeMaterial(List<ExchangeMaterial> exchangeMaterialList, Map<String, Integer> sumMaterials) throws IOException {
+        File file = new File("result/trade/lpexchange/exchangNeedMaterials");
+        FileWriter writer = new FileWriter(file);
+        writer.write("==============sum==============");
+        writer.write("\r\n");
+        Iterator<String> iter = sumMaterials.keySet().iterator();
+        while (iter.hasNext()) {
+            String name = iter.next();
+            Integer count = sumMaterials.get(name);
+            writer.write(name);
+            writer.write("\t");
+            writer.write("x");
+            writer.write(String.valueOf(count));
+            writer.write("\r\n");
+        }
+        writer.write("\r\n");
+        for(ExchangeMaterial exchangeMaterial : exchangeMaterialList) {
+            writer.write("==============product==============");
+            writer.write("\r\n");
+            String itemName = exchangeMaterial.getItemName();
+
+            writer.write(itemName);
+            writer.write("\t");
+            writer.write("exchangeTime:");
+            int exchangeTimes = exchangeMaterial.getExchangeTimes();
+            writer.write(String.valueOf(exchangeTimes));
+            writer.write("\t");
+            writer.write("prodCount:");
+            writer.write(String.valueOf(exchangeMaterial.getProdCnt()));
+            writer.write("\r\n");
+            writer.write("==============detail==============");
+            writer.write("\r\n");
+            List<CorpExchangeMaterials> materialsList = exchangeMaterial.getCorpExchangeMaterialsList();
+            for(CorpExchangeMaterials materials : materialsList) {
+                writer.write(materials.getMaterialsName());
+                writer.write("\t");
+                writer.write("x");
+                writer.write(String.valueOf(materials.getMaterialsQuantity() * exchangeTimes));
+                writer.write("\r\n");
+            }
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private List<ExchangeMaterial> queryDBandSum(Map<String, Integer> exchangeMap, Map<String, Integer> sumMaterials, String corpName) {
+        List<ExchangeMaterial> ret = new ArrayList<>();
+        CorpExchangeMaterialsMapper corpExchangeMaterialsMapper = getCorpExchangeMaterialsMapper();
+        CorpExchangeMapper corpExchangeMapper = getCorpExchangeMapper();
+        Iterator<String> iter = exchangeMap.keySet().iterator();
+        while (iter.hasNext()) {
+            String name = iter.next();
+            Integer count = exchangeMap.get(name);
+            ExchangeMaterial exchangeMaterial = new ExchangeMaterial();
+            exchangeMaterial.setItemName(name);
+            CorpExchange corpExchange = corpExchangeMapper.selectByPrimaryKey(corpName, name);
+            BigDecimal times = NumberUtil.div(new BigDecimal(count), new BigDecimal(corpExchange.getQuantity()), 0, RoundingMode.UP);
+            exchangeMaterial.setExchangeTimes(times.intValue());
+            exchangeMaterial.setProdCnt(times.intValue() * corpExchange.getQuantity());
+            CorpExchangeMaterialsExample example = new CorpExchangeMaterialsExample();
+            example.createCriteria().andCorporationNameEqualTo(corpName).andItemNameEqualTo(name);
+            List<CorpExchangeMaterials> corpExchangeMaterials = corpExchangeMaterialsMapper.selectByExample(example);
+            exchangeMaterial.setCorpExchangeMaterialsList(corpExchangeMaterials);
+            statisticsMaterial(sumMaterials, exchangeMaterial);
+            ret.add(exchangeMaterial);
+        }
+        return ret;
+    }
+
+    private void statisticsMaterial(Map<String, Integer> sumMaterials, ExchangeMaterial exchangeMaterial) {
+        List<CorpExchangeMaterials> corpExchangeMaterialsList = exchangeMaterial.getCorpExchangeMaterialsList();
+        for(CorpExchangeMaterials materials : corpExchangeMaterialsList) {
+            String materialsName = materials.getMaterialsName();
+            Integer quantity = materials.getMaterialsQuantity();
+            Integer cnt = sumMaterials.get(materialsName);
+            if(cnt == null) {
+                cnt = 0;
+            }
+            cnt += (quantity * exchangeMaterial.getExchangeTimes());
+            sumMaterials.put(materialsName, cnt);
+        }
+    }
+
+    private Map<String, Integer> parseExchangeString(String exchangeList) {
+        Map<String, Integer> map = new HashMap<>();
+        String[] records = exchangeList.split("\n");
+        for(String record : records) {
+            String[] split = record.split("\t");
+            String count = split[1].substring(1);
+            map.put(split[0], Integer.parseInt(count));
+        }
+        return map;
+    }
+
+    /**
+     * 得到一些物品的兑换价格
+     * @param corpName
+     * @param itemMap
+     * @param LPrate
+     */
+    private void getLPExchangeItemPrice(String corpName, Map<String, Integer> itemMap, int LPrate) {
+        int sum = 0;
+        Iterator<String> iter = itemMap.keySet().iterator();
+        while (iter.hasNext()) {
+            String name = iter.next();
+            sum += getLPExchangeItemPrice(corpName, name, itemMap.get(name), LPrate);
+        }
+        System.out.println(sum);
+    }
+
+    /**
+     * 得到某物品的兑换价格
+     * @param itemName
+     * @param count
+     */
+    private int getLPExchangeItemPrice(String corpName, String itemName, int count, int LPrate) {
+        CorpExchangeMapper corpExchangeMapper = getCorpExchangeMapper();
+        CorpExchange corpExchange = corpExchangeMapper.selectByPrimaryKey(corpName, itemName);
+        Integer iskCost = corpExchange.getIskCost();
+        Integer lpCost = corpExchange.getLpCost();
+        Integer quantity = corpExchange.getQuantity();
+        return (iskCost + lpCost * LPrate) * (count/quantity);
+    }
+
+    /**
+     * 从市场解析文件中获得某军团可兑换列表
+     * @param corpName  军团名
+     * @throws Exception
+     */
+    private void getLPExchangeList(String corpName) throws Exception {
+        Map<String, Integer> map = parseMarketResult();
+        CorpExchangeMapper corpExchangeMapper = getCorpExchangeMapper();
+        CorpExchangeExample exchangeExample = new CorpExchangeExample();
+        exchangeExample.createCriteria().andCorporationNameEqualTo(corpName).andItemNameIn(new ArrayList<>(map.keySet()));
+        List<CorpExchange> corpExchanges = corpExchangeMapper.selectByExample(exchangeExample);
+        outLPExchangeList(corpExchanges, map);
+    }
+
+    private void outLPExchangeList(List<CorpExchange> corpExchanges, Map<String, Integer> map) throws IOException {
+        File file = new File("result/trade/lpexchange/canExchangeList");
+        FileWriter writer = new FileWriter(file);
+        for(CorpExchange corpExchange : corpExchanges) {
+            String name = corpExchange.getItemName();
+            writer.write(name);
+            writer.write("\t");
+            writer.write("x");
+            writer.write(String.valueOf(map.get(name)));
+            writer.write("\r\n");
+        }
+        writer.flush();
+        writer.close();
+    }
+
+    private void getT2product() throws Exception {
+        Map<String, Integer> map = parseMarketResult();
+        List<String> productNameList = new ArrayList<>(map.keySet());
+        ItemsMapper itemsMapper = getItemsMapper();
+        ItemsExample example = new ItemsExample();
+        example.createCriteria().andEnNameIn(productNameList).andMetagroupidEqualTo(2);
+        List<Items> items = itemsMapper.selectByExample(example);
+        for (Items item : items) {
+            System.out.println(item.getEnName() + " x" + map.get(item.getEnName()));
+        }
+    }
+
+    private Map<String ,Integer> parseMarketResult() throws Exception {
+        Map<String ,Integer> ret = new HashMap<>();
+        FileReader fr=new FileReader("result/trade/parseDetail");
+        BufferedReader br=new BufferedReader(fr);
+        String line="";
+        while ((line=br.readLine())!=null) {
+            String str = line.split("\t")[0];
+            if(str.startsWith("===")) {
+                continue;
+            }
+            int x = str.lastIndexOf("x");
+            String count = str.substring(x + 1);
+            ret.put(str.substring(0, x - 1), Integer.parseInt(count));
+        }
+        br.close();
+        fr.close();
+        return ret;
     }
 
     public void getRfEmptyItem(List<Integer> marketRoot) {

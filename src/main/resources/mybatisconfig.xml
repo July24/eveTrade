@@ -23,5 +23,7 @@
         <mapper resource="mapper/IndustryactivityproductsMapper.xml"/>
         <mapper resource="mapper/InvmarketgroupsMapper.xml"/>
         <mapper resource="mapper/ItemsMapper.xml"/>
+        <mapper resource="mapper/CorpExchangeMapper.xml"/>
+        <mapper resource="mapper/CorpExchangeMaterialsMapper.xml"/>
     </mappers>
 </configuration>

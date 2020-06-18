@@ -54,9 +54,11 @@
             <property name="enableSubPackages" value="true" />
         </javaClientGenerator>
 
-        <table schema="sde" tableName="items"/>
-        <table schema="sde" tableName="industryactivitymaterials"/>
-        <table schema="sde" tableName="industryactivityproducts"/>
-        <table schema="sde" tableName="invmarketgroups"/>
+<!--        <table schema="sde" tableName="items"/>-->
+<!--        <table schema="sde" tableName="industryactivitymaterials"/>-->
+<!--        <table schema="sde" tableName="industryactivityproducts"/>-->
+<!--        <table schema="sde" tableName="invmarketgroups"/>-->
+        <table schema="sde" tableName="corp_exchange"/>
+        <table schema="sde" tableName="corp_exchange_materials"/>
     </context>
 </generatorConfiguration>

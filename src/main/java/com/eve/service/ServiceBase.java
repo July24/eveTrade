@@ -21,7 +21,7 @@ import java.io.*;
 import java.util.*;
 
 public class ServiceBase {
-    private static SqlSession sqlSession;
+    protected static SqlSession sqlSession;
 
     protected HttpResponse sendGetRequest(String url, Map<String, Object> paramMap) {
         return TradeUtil.sendGetRequest(url, paramMap);
@@ -314,5 +314,13 @@ public class ServiceBase {
 
     protected InvmarketgroupsMapper getMarketgroupsMapper() {
         return sqlSession.getMapper(InvmarketgroupsMapper.class);
+    }
+
+    protected CorpExchangeMapper getCorpExchangeMapper() {
+        return sqlSession.getMapper(CorpExchangeMapper.class);
+    }
+
+    protected CorpExchangeMaterialsMapper getCorpExchangeMaterialsMapper() {
+        return sqlSession.getMapper(CorpExchangeMaterialsMapper.class);
     }
 }
